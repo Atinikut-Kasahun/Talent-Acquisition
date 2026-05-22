@@ -6,31 +6,57 @@ import type { Job } from './LandingPage';
 const API_URL = 'http://127.0.0.1:8000/api';
 
 interface ApplyForm {
-  first_name: string;
-  last_name: string;
-  email: string;
+  full_name: string;
   phone: string;
-  linkedin: string;
-  portfolio: string;
-  country: string;
-  visa: string;
-  work_auth: string;
-  heard_from: string;
+  email: string;
+  gender: string;
+  location: string;
+  relocate: string;
+  education_level: string;
+  field_of_study: string;
+  institution: string;
+  certifications: string;
+  graduation_year: string;
+  cgpa: string;
+  experience_years: string;
+  recent_employer: string;
+  responsibilities: string;
+  skills: string;
+  contract_type: string;
+  preferred_position: string;
+  expected_salary: string;
+  interest_reason: string;
+  notice_period: string;
+  start_date: string;
+  comments: string;
   acknowledge: boolean;
   confirmed: boolean;
 }
 
 const emptyForm: ApplyForm = {
-  first_name: '',
-  last_name: '',
-  email: '',
+  full_name: '',
   phone: '',
-  linkedin: '',
-  portfolio: '',
-  country: '',
-  visa: '',
-  work_auth: '',
-  heard_from: '',
+  email: '',
+  gender: '',
+  location: '',
+  relocate: '',
+  education_level: '',
+  field_of_study: '',
+  institution: '',
+  certifications: '',
+  graduation_year: '',
+  cgpa: '',
+  experience_years: '',
+  recent_employer: '',
+  responsibilities: '',
+  skills: '',
+  contract_type: '',
+  preferred_position: '',
+  expected_salary: '',
+  interest_reason: '',
+  notice_period: '',
+  start_date: '',
+  comments: '',
   acknowledge: false,
   confirmed: false,
 };
@@ -67,8 +93,26 @@ const JobDetail = () => {
   };
 
   const handleSubmit = async () => {
-    if (!form.first_name || !form.last_name || !form.email) {
-      setError('Please fill in your first name, last name, and email.');
+    if (!form.full_name || !form.phone || !form.email) {
+      setError('Please fill in your full name, phone number, and email address.');
+      return;
+    }
+    if (!form.gender || !form.location || !form.relocate) {
+      setError('Please complete your personal and contact information.');
+      return;
+    }
+    if (
+      !form.education_level ||
+      !form.field_of_study ||
+      !form.institution ||
+      !form.graduation_year ||
+      !form.cgpa
+    ) {
+      setError('Please complete your education and qualifications.');
+      return;
+    }
+    if (!form.experience_years || !form.contract_type || !form.preferred_position) {
+      setError('Please complete your work experience and role-specific screening fields.');
       return;
     }
     if (!form.acknowledge || !form.confirmed) {
@@ -80,16 +124,29 @@ const JobDetail = () => {
 
     try {
       const formData = new FormData();
-      formData.append('first_name', form.first_name);
-      formData.append('last_name', form.last_name);
+      formData.append('full_name', form.full_name);
       formData.append('email', form.email);
       formData.append('phone', form.phone);
-      formData.append('linkedin', form.linkedin);
-      formData.append('portfolio', form.portfolio);
-      formData.append('country', form.country);
-      formData.append('visa', form.visa);
-      formData.append('work_auth', form.work_auth);
-      formData.append('heard_from', form.heard_from);
+      formData.append('gender', form.gender);
+      formData.append('location', form.location);
+      formData.append('relocate', form.relocate);
+      formData.append('education_level', form.education_level);
+      formData.append('field_of_study', form.field_of_study);
+      formData.append('institution', form.institution);
+      formData.append('certifications', form.certifications);
+      formData.append('graduation_year', form.graduation_year);
+      formData.append('cgpa', form.cgpa);
+      formData.append('experience_years', form.experience_years);
+      formData.append('recent_employer', form.recent_employer);
+      formData.append('responsibilities', form.responsibilities);
+      formData.append('skills', form.skills);
+      formData.append('contract_type', form.contract_type);
+      formData.append('preferred_position', form.preferred_position);
+      formData.append('expected_salary', form.expected_salary);
+      formData.append('interest_reason', form.interest_reason);
+      formData.append('notice_period', form.notice_period);
+      formData.append('start_date', form.start_date);
+      formData.append('comments', form.comments);
       if (resume) formData.append('resume', resume);
 
       const res = await fetch(`${API_URL}/jobs/${id}/apply`, {
@@ -319,44 +376,24 @@ const JobDetail = () => {
                   )}
 
                   <div className="form-wrapper">
-                    {/* Name Row */}
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">First Name</label>
-                        <input
-                          className="form-input"
-                          type="text"
-                          placeholder="First Name"
-                          value={form.first_name}
-                          onChange={(e) => handleField('first_name', e.target.value)}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Last Name</label>
-                        <input
-                          className="form-input"
-                          type="text"
-                          placeholder="Last Name"
-                          value={form.last_name}
-                          onChange={(e) => handleField('last_name', e.target.value)}
-                        />
-                      </div>
+                    <div className="form-group">
+                      <div className="form-question">SECTION 1: Personal & Contact Information</div>
                     </div>
 
-                    {/* Contact Row */}
+                    <div className="form-group">
+                      <label className="form-label">Full Name (Required)</label>
+                      <input
+                        className="form-input"
+                        type="text"
+                        placeholder="Full Name"
+                        value={form.full_name}
+                        onChange={(e) => handleField('full_name', e.target.value)}
+                      />
+                    </div>
+
                     <div className="form-row">
                       <div className="form-group">
-                        <label className="form-label">Email Address</label>
-                        <input
-                          className="form-input"
-                          type="email"
-                          placeholder="you@email.com"
-                          value={form.email}
-                          onChange={(e) => handleField('email', e.target.value)}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Phone Number</label>
+                        <label className="form-label">Phone Number (Required)</label>
                         <div className="phone-wrap">
                           <div className="phone-flag">🇪🇹</div>
                           <input
@@ -368,11 +405,293 @@ const JobDetail = () => {
                           />
                         </div>
                       </div>
+                      <div className="form-group">
+                        <label className="form-label">Email Address</label>
+                        <input
+                          className="form-input"
+                          type="email"
+                          placeholder="you@email.com"
+                          value={form.email}
+                          onChange={(e) => handleField('email', e.target.value)}
+                        />
+                      </div>
                     </div>
 
-                    {/* Resume */}
                     <div className="form-group">
-                      <label className="form-label">Resume (Optional)</label>
+                      <div className="form-question">Gender (Required)</div>
+                      <div className="radio-grid">
+                        {['Male', 'Female'].map((option) => (
+                          <label key={option} className="radio-opt">
+                            <input
+                              type="radio"
+                              name="gender"
+                              value={option}
+                              checked={form.gender === option}
+                              onChange={() => handleField('gender', option)}
+                            />{' '}
+                            {option}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Your Current Location / Home Location</label>
+                      <input
+                        className="form-input"
+                        type="text"
+                        placeholder="e.g., Piyasa, Megenagna, Adama, Hawassa, 4 Kilo"
+                        value={form.location}
+                        onChange={(e) => handleField('location', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <div className="form-question">Are you open to relocate from your home location? (Required)</div>
+                      <div className="radio-grid">
+                        {['Yes', 'No'].map((option) => (
+                          <label key={option} className="radio-opt">
+                            <input
+                              type="radio"
+                              name="relocate"
+                              value={option}
+                              checked={form.relocate === option}
+                              onChange={() => handleField('relocate', option)}
+                            />{' '}
+                            {option}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <hr className="form-divider" />
+
+                    <div className="form-group">
+                      <div className="form-question">SECTION 2: Education & Qualifications</div>
+                    </div>
+
+                    <div className="form-group">
+                      <div className="form-question">Highest Level of Education (Required)</div>
+                      <div className="radio-grid-col">
+                        {[
+                          'Doctorate / Ph.D.',
+                          "Master's Degree",
+                          "Bachelor's Degree",
+                          'Diploma',
+                          'High School Diploma / Secondary School Certificate',
+                        ].map((option) => (
+                          <label key={option} className="radio-opt">
+                            <input
+                              type="radio"
+                              name="education_level"
+                              value={option}
+                              checked={form.education_level === option}
+                              onChange={() => handleField('education_level', option)}
+                            />{' '}
+                            {option}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Field of Study (Required)</label>
+                        <input
+                          className="form-input"
+                          type="text"
+                          placeholder="e.g., Pharmacy, Business, IT"
+                          value={form.field_of_study}
+                          onChange={(e) => handleField('field_of_study', e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Name Of Institution (Required)</label>
+                        <input
+                          className="form-input"
+                          type="text"
+                          placeholder="Institution Name"
+                          value={form.institution}
+                          onChange={(e) => handleField('institution', e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Certifications / Licenses</label>
+                        <input
+                          className="form-input"
+                          type="text"
+                          placeholder="Certifications / Licenses"
+                          value={form.certifications}
+                          onChange={(e) => handleField('certifications', e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Graduation Year (Required)</label>
+                        <input
+                          className="form-input"
+                          type="text"
+                          placeholder="e.g., 2024"
+                          value={form.graduation_year}
+                          onChange={(e) => handleField('graduation_year', e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">CGPA (Required)</label>
+                      <input
+                        className="form-input"
+                        type="text"
+                        placeholder="e.g., 3.5"
+                        value={form.cgpa}
+                        onChange={(e) => handleField('cgpa', e.target.value)}
+                      />
+                    </div>
+
+                    <hr className="form-divider" />
+
+                    <div className="form-group">
+                      <div className="form-question">SECTION 3: Work Experience</div>
+                    </div>
+
+                    <div className="form-group">
+                      <div className="form-question">Years of Relevant Experience (Required)</div>
+                      <div className="radio-grid-col">
+                        {[
+                          'Above 10 Years',
+                          '6 Years to 9 Years',
+                          '3 Years to 5 Years',
+                          '1 Years to 2 Years',
+                          'Less than 1 Year',
+                          'No Experience',
+                        ].map((option) => (
+                          <label key={option} className="radio-opt">
+                            <input
+                              type="radio"
+                              name="experience_years"
+                              value={option}
+                              checked={form.experience_years === option}
+                              onChange={() => handleField('experience_years', option)}
+                            />{' '}
+                            {option}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Most Recent Employer</label>
+                      <input
+                        className="form-input"
+                        type="text"
+                        placeholder="Most Recent Employer"
+                        value={form.recent_employer}
+                        onChange={(e) => handleField('recent_employer', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Key Responsibilities in Your Last Role</label>
+                      <textarea
+                        className="form-input"
+                        rows={4}
+                        placeholder="Describe your key responsibilities"
+                        value={form.responsibilities}
+                        onChange={(e) => handleField('responsibilities', e.target.value)}
+                      />
+                    </div>
+
+                    <hr className="form-divider" />
+
+                    <div className="form-group">
+                      <div className="form-question">SECTION 4: Skills & Tools</div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Technical Skills (e.g., software, tools)</label>
+                      <textarea
+                        className="form-input"
+                        rows={4}
+                        placeholder="List your technical skills"
+                        value={form.skills}
+                        onChange={(e) => handleField('skills', e.target.value)}
+                      />
+                    </div>
+
+                    <hr className="form-divider" />
+
+                    <div className="form-group">
+                      <div className="form-question">SECTION 5: Role-Specific Screening</div>
+                    </div>
+
+                    <div className="form-group">
+                      <div className="form-question">Contract Type (Required)</div>
+                      <div className="radio-grid">
+                        {['Permanent', 'Contract', 'Part-Time'].map((option) => (
+                          <label key={option} className="radio-opt">
+                            <input
+                              type="radio"
+                              name="contract_type"
+                              value={option}
+                              checked={form.contract_type === option}
+                              onChange={() => handleField('contract_type', option)}
+                            />{' '}
+                            {option}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Preferred job position you want to join (Required)</label>
+                      <input
+                        className="form-input"
+                        type="text"
+                        placeholder="e.g., Jr. pharmacist, Dispensary, Regulatory affairs"
+                        value={form.preferred_position}
+                        onChange={(e) => handleField('preferred_position', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Expected Salary Range</label>
+                      <input
+                        className="form-input"
+                        type="text"
+                        placeholder="e.g., 20,000 - 30,000"
+                        value={form.expected_salary}
+                        onChange={(e) => handleField('expected_salary', e.target.value)}
+                      />
+                    </div>
+
+                    <hr className="form-divider" />
+
+                    <div className="form-group">
+                      <div className="form-question">SECTION 6: Situational Questions</div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Why are you interested in our company?</label>
+                      <textarea
+                        className="form-input"
+                        rows={4}
+                        placeholder="Explain why you are interested in our company"
+                        value={form.interest_reason}
+                        onChange={(e) => handleField('interest_reason', e.target.value)}
+                      />
+                    </div>
+
+                    <hr className="form-divider" />
+
+                    <div className="form-group">
+                      <div className="form-question">SECTION 7: Document Uploads</div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Upload Resume (CV)</label>
                       <label className="upload-box" style={{ cursor: 'pointer' }}>
                         <input
                           type="file"
@@ -392,80 +711,45 @@ const JobDetail = () => {
 
                     <hr className="form-divider" />
 
-                    {/* Country */}
                     <div className="form-group">
-                      <div className="form-question">
-                        Are you currently based in any of these countries?
+                      <div className="form-question">SECTION 8: Availability</div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Notice Period</label>
+                        <input
+                          className="form-input"
+                          type="text"
+                          placeholder="e.g., 2 weeks"
+                          value={form.notice_period}
+                          onChange={(e) => handleField('notice_period', e.target.value)}
+                        />
                       </div>
-                      <div className="radio-grid">
-                        {['United States', 'Germany', 'United Kingdom', 'Argentina', 'Australia', 'Canada', 'India', 'Japan', 'Ethiopia', 'Other'].map((country) => (
-                          <label key={country} className="radio-opt">
-                            <input
-                              type="radio"
-                              name="country"
-                              value={country}
-                              checked={form.country === country}
-                              onChange={() => handleField('country', country)}
-                            />{' '}
-                            {country}
-                          </label>
-                        ))}
+                      <div className="form-group">
+                        <label className="form-label">Preferred Start Date</label>
+                        <input
+                          className="form-input"
+                          type="date"
+                          value={form.start_date}
+                          onChange={(e) => handleField('start_date', e.target.value)}
+                        />
                       </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Any Comments</label>
+                      <textarea
+                        className="form-input"
+                        rows={3}
+                        placeholder="Any additional information"
+                        value={form.comments}
+                        onChange={(e) => handleField('comments', e.target.value)}
+                      />
                     </div>
 
                     <hr className="form-divider" />
 
-                    {/* Visa */}
-                    <div className="form-group">
-                      <div className="form-question">Will you require Visa Sponsorship now, or in the future?</div>
-                      <div className="radio-grid">
-                        {['Yes', 'No'].map((answer) => (
-                          <label key={answer} className="radio-opt">
-                            <input
-                              type="radio"
-                              name="visa"
-                              value={answer}
-                              checked={form.visa === answer}
-                              onChange={() => handleField('visa', answer)}
-                            />{' '}
-                            {answer}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    <hr className="form-divider" />
-
-                    {/* Work Authorization */}
-                    <div className="form-group">
-                      <div className="form-question">
-                        Your authorization to work in the country where you live.
-                      </div>
-                      <div className="radio-grid-col">
-                        {[
-                          'I am authorized to work in the country due to my nationality',
-                          'I am authorized to work in the country based on a valid work permit and do not need a company to sponsor my visa',
-                          'I am authorized to work in the country based on a valid work permit which needs to be sponsored by the company I work for',
-                          'I am not authorized to work in the country and need visa support',
-                          'Other',
-                        ].map((option) => (
-                          <label key={option} className="radio-opt">
-                            <input
-                              type="radio"
-                              name="auth"
-                              value={option}
-                              checked={form.work_auth === option}
-                              onChange={() => handleField('work_auth', option)}
-                            />{' '}
-                            {option}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    <hr className="form-divider" />
-
-                    {/* Privacy */}
                     <div className="form-group">
                       <div className="privacy-note">
                         By submitting my application, I acknowledge that I have read and understand Droga Group's{' '}
@@ -483,11 +767,8 @@ const JobDetail = () => {
 
                     <hr className="form-divider" />
 
-                    {/* Accuracy */}
                     <div className="form-group">
-                      <div className="form-question">
-                        Please double-check all the information provided above.
-                      </div>
+                      <div className="form-question">Please double-check all the information provided above.</div>
                       <label className="radio-opt">
                         <input
                           type="checkbox"
@@ -500,73 +781,6 @@ const JobDetail = () => {
 
                     <hr className="form-divider" />
 
-                    {/* Heard From */}
-                    <div className="form-group">
-                      <div className="form-question">Where did you first hear about this role?</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 24px' }}>
-                        {[
-                          'Other job boards',
-                          'LLMs (ChatGPT, etc.)',
-                          "I'm a Droga Group customer",
-                          'Referral from a Droga customer',
-                          'Referral from a Droga team member',
-                          'Social media (X, Instagram, YouTube, etc.)',
-                          'Other Content (news articles, podcasts, blogs)',
-                          'Developer communities (GitHub, Hacker News, Reddit, etc.)',
-                          'Other',
-                        ].map((source) => (
-                          <label key={source} className="radio-opt">
-                            <input
-                              type="radio"
-                              name="source"
-                              value={source}
-                              checked={form.heard_from === source}
-                              onChange={() => handleField('heard_from', source)}
-                            />{' '}
-                            {source}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    <hr className="form-divider" />
-
-                    {/* Social */}
-                    <div className="form-group">
-                      <div className="form-question">Optionally, include links to your social media profiles.</div>
-                      <div className="form-row" style={{ marginTop: 8 }}>
-                        <div className="form-group">
-                          <label className="form-label">LinkedIn</label>
-                          <div className="linkedin-wrap">
-                            <div className="linkedin-prefix">linkedin.com/in/</div>
-                            <input
-                              className="linkedin-input"
-                              type="text"
-                              placeholder="handle"
-                              value={form.linkedin}
-                              onChange={(e) => handleField('linkedin', e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Portfolio</label>
-                          <div className="portfolio-wrap">
-                            <div className="portfolio-prefix">https://</div>
-                            <input
-                              className="portfolio-input"
-                              type="text"
-                              placeholder="portfolio.com"
-                              value={form.portfolio}
-                              onChange={(e) => handleField('portfolio', e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <hr className="form-divider" />
-
-                    {/* Submit */}
                     <div className="submit-row">
                       <button
                         className="btn-submit"

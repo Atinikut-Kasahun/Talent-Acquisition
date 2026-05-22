@@ -33,3 +33,5 @@ node_modules/
 backend/node_modules/
 vendor/
 backend/vendor/
+
+backend.zip

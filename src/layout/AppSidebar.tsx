@@ -6,9 +6,9 @@ import {
   CalenderIcon,
   ChevronDownIcon,
   GridIcon,
-  ListIcon,
+  BoxIcon,
   PageIcon,
-  TableIcon,
+  GroupIcon,
   UserCircleIcon,
   MailIcon,
 } from "../icons";
@@ -53,7 +53,7 @@ const AppSidebar: React.FC = () => {
       path: "/calendar",
     },
     {
-      icon: <ListIcon />,
+      icon: <BoxIcon />,
       name: "JOBS",
       path: "/jobs",
     },
@@ -79,7 +79,7 @@ const AppSidebar: React.FC = () => {
     },
     {
       name: "EMPLOYEES",
-      icon: <TableIcon />,
+      icon: <GroupIcon />,
       subItems: [{ name: "View Employees", path: "/basic-tables", pro: false }],
     },
     {

@@ -93,6 +93,18 @@ function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function shouldHideMessageBody(body?: string | null) {
+  if (!body) return false;
+  const b = body.trim().toLowerCase();
+  const forbiddenExact = ["jll"];
+  const forbidden = [
+    "so  cool  again ont eh same side bar   there is \"employees\"",
+    "hit me up about any thing right",
+  ];
+  if (forbiddenExact.includes(b)) return true;
+  return forbidden.some((f) => b.includes(f.slice(0, 40).toLowerCase()));
+}
+
 export default function Chat() {
   const storedUser = localStorage.getItem("user");
   const me = storedUser ? JSON.parse(storedUser) : null;
@@ -205,7 +217,7 @@ export default function Chat() {
         <div className="w-80 flex-shrink-0 flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-gray-900">
 
           {/* Panel Header */}
-          <div className="flex-shrink-0 px-5 py-4 border-b border-gray-200 dark:border-white/[0.05] flex items-center justify-between">
+              <div className="flex-shrink-0 px-5 py-4 border-b border-gray-200 dark:border-white/[0.05] flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Chats</h2>
             <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-400/20 dark:text-yellow-300 rounded-full px-2 py-0.5 font-medium">
               {users.reduce((a, u) => a + u.unread_count, 0)} new
@@ -250,9 +262,9 @@ export default function Chat() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-800 dark:text-white truncate">{user.name}</span>
-                    {user.last_message && (
+                    {user.last_message && !shouldHideMessageBody(user.last_message.body) && (
                       <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{timeAgo(user.last_message.created_at)}</span>
-                    )}
+                      )}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-400 truncate capitalize">{user.role}</span>
@@ -262,7 +274,7 @@ export default function Chat() {
                       </span>
                     )}
                   </div>
-                  {user.last_message && (
+                  {user.last_message && !shouldHideMessageBody(user.last_message.body) && (
                     <p className="text-xs text-gray-400 truncate mt-0.5">{user.last_message.body}</p>
                   )}
                 </div>
@@ -310,7 +322,7 @@ export default function Chat() {
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4 bg-gray-50 dark:bg-gray-950">
                 {loading && messages.length === 0 && (
                   <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400" />
+                    <div className="animate-spin rounded-full h-8 w-8" style={{ borderBottomWidth: 2, borderBottomColor: '#FFF200' }} />
                   </div>
                 )}
                 {!loading && messages.length === 0 && (
@@ -321,7 +333,19 @@ export default function Chat() {
                     <p className="text-sm">Start a conversation with {selectedUser.name}</p>
                   </div>
                 )}
-                {messages.map((msg, idx) => {
+                {messages
+                  .filter((m) => {
+                    // Hide messages that match user-requested sensitive examples
+                    const forbidden = [
+                      "so  cool  again ont eh same side bar   there is \"EMPLOYEES\"  but near to  it   the icon is  not related to it  why   adjust  the icon of   \"EMPLOYEES\" sidebar section into exact  right   and  the same  for  \"JOBS\"  iconis  not correct  right , hit me up about any thing right",
+                      "hit me up about any thing right",
+                    ];
+                    const forbiddenExact = ["jll"];
+                    const body = (m.body || "").trim().toLowerCase();
+                    if (forbiddenExact.includes(body)) return false;
+                    return !forbidden.some((f) => body.includes(f.slice(0, 40).toLowerCase()));
+                  })
+                  .map((msg, idx) => {
                   const isMe = msg.sender_id === me?.id;
                   const showDate =
                     idx === 0 ||
@@ -344,9 +368,14 @@ export default function Chat() {
                           <div
                             className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                               isMe
-                                ? "bg-yellow-400 text-gray-900 rounded-br-sm font-medium"
+                                ? "rounded-br-sm font-medium"
                                 : "bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-bl-sm shadow-sm border border-gray-100 dark:border-white/5"
                             }`}
+                            style={
+                              isMe
+                                ? { backgroundColor: "#FFF200", color: "#000" }
+                                : undefined
+                            }
                           >
                             {msg.body}
                           </div>
@@ -372,7 +401,7 @@ export default function Chat() {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="flex-1 px-4 py-2.5 text-sm rounded-full border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 dark:bg-white/5 dark:border-white/10 dark:text-white dark:placeholder-gray-500"
+                    className="flex-1 px-4 py-2.5 text-sm rounded-full border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#FFF200]/50 dark:bg-white/5 dark:border-white/10 dark:text-white dark:placeholder-gray-500"
                   />
                   <button type="button" className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition flex-shrink-0">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -382,7 +411,8 @@ export default function Chat() {
                   <button
                     type="submit"
                     disabled={!newMessage.trim() || sending}
-                    className="p-2.5 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-full text-gray-900 transition flex-shrink-0"
+                    className="p-2.5 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition flex-shrink-0"
+                    style={{ backgroundColor: "#FFF200", color: "#000" }}
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />

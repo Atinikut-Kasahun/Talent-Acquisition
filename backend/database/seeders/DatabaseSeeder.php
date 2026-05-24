@@ -77,6 +77,36 @@ class DatabaseSeeder extends Seeder
             'company_id' => $physio->id,
         ]);
 
+        $neba = User::firstOrCreate([
+            'email' => 'Neba@droga.com'
+        ], [
+            'name' => 'Neba',
+            'password' => Hash::make('password'),
+            'role' => 'managing director',
+            'is_active' => true,
+            'company_id' => $physio->id,
+        ]);
+
+        $tesfish = User::firstOrCreate([
+            'email' => 'Tesfish@droga.com'
+        ], [
+            'name' => 'Tesfish',
+            'password' => Hash::make('password'),
+            'role' => 'general Manager',
+            'is_active' => true,
+            'company_id' => $physio->id,
+        ]);
+
+        $yosan = User::firstOrCreate([
+            'email' => 'Yosan@droga.com'
+        ], [
+            'name' => 'Yosan',
+            'password' => Hash::make('password'),
+            'role' => 'HR manager',
+            'is_active' => true,
+            'company_id' => $physio->id,
+        ]);
+
         
         $branchesData = [
             ['name' => 'Megenagna', 'city' => 'Addis Ababa', 'phone' => '+251911000001'],

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
@@ -7,10 +7,22 @@ import Label from "../form/Label";
 
 export default function UserMetaCard() {
   const { isOpen, openModal, closeModal } = useModal();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser ? JSON.parse(storedUser) : null;
+  const userName = user?.name || "User";
+  const userRole = user?.role || "Role";
+
+  const getAvatarUrl = (path: string | null) => {
+    if (!path) return "/HR.jpg";
+    if (path.startsWith("http")) return path;
+    return `http://127.0.0.1:8000${path.startsWith('/') ? path : '/' + path}`;
+  };
 
   const [profileData, setProfileData] = useState({
-    name: "Fresh Kebede",
-    role: "HR Manager",
+    name: userName,
+    role: userRole,
     location: "Addis Ababa, Ethiopia.",
     facebook: "https://www.facebook.com/DrogaGroup",
     x: "https://x.com/DrogaGroup",
@@ -19,6 +31,32 @@ export default function UserMetaCard() {
   });
 
   const [tempData, setTempData] = useState(profileData);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/auth/avatar", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
+        body: formData,
+      });
+      if (res.ok) {
+        const updatedUser = await res.json();
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleOpenModal = () => {
     setTempData(profileData);
@@ -39,8 +77,15 @@ export default function UserMetaCard() {
       <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-col items-center w-full gap-6 xl:flex-row">
-            <div className="w-20 h-20 overflow-hidden border border-gray-200 rounded-full dark:border-gray-800">
-              <img src="/HR.jpg" alt="user" className="w-full h-full object-cover" />
+            <div 
+              className="relative group w-20 h-20 overflow-hidden border border-gray-200 rounded-full dark:border-gray-800 cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <img src={getAvatarUrl(user?.avatar)} alt="user" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-medium">
+                Change
+              </div>
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
             </div>
             <div className="order-3 xl:order-2">
               <h4 className="mb-2 text-lg font-semibold text-center text-gray-800 dark:text-white/90 xl:text-left">

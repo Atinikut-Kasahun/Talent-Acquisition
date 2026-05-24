@@ -8,12 +8,18 @@ import Label from "../form/Label";
 export default function UserInfoCard() {
   const { isOpen, openModal, closeModal } = useModal();
   
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser ? JSON.parse(storedUser) : null;
+  const names = user?.name ? user.name.split(' ') : ["User", ""];
+  const firstName = names[0];
+  const lastName = names.slice(1).join(' ') || "";
+
   const [formData, setFormData] = useState({
-    firstName: "Fresh",
-    lastName: "Kebede",
-    email: "freshk@droga.com",
-    phone: "+09 363 398 46",
-    bio: "HR Manager",
+    firstName: firstName,
+    lastName: lastName,
+    email: user?.email || "",
+    phone: user?.phone || "",
+    bio: user?.role || "",
     facebook: "https://www.facebook.com/PimjoHQ",
     x: "https://x.com/PimjoHQ",
     linkedin: "https://www.linkedin.com/company/pimjo",

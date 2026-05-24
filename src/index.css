@@ -195,18 +195,14 @@ layer(base);
 }
 
 @utility menu-item-active {
-  background-color: rgba(252, 238, 35, 0.30);
+  background-color: rgba(255, 242, 0, 0.30);
   color: #1d2939;
-  @apply dark:text-[#FCEE23];
+  @apply dark:text-[#FFF200];
   @apply rounded-lg;
 }
 
 @utility menu-item-inactive {
-  @apply text-gray-700 group-hover:text-gray-700 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-300;
-
-  &:hover {
-    background-color: rgba(252, 238, 35, 0.30);
-  }
+  @apply text-gray-700 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-300;
 }
 
 @utility menu-item-icon {
@@ -214,7 +210,7 @@ layer(base);
 }
 
 @utility menu-item-icon-active {
-  @apply text-gray-700 dark:text-[#FCEE23];
+  @apply text-gray-700 dark:text-[#FFF200];
 }
 
 @utility menu-item-icon-size {
@@ -244,9 +240,9 @@ layer(base);
 }
 
 @utility menu-dropdown-item-active {
-  background-color: rgba(252, 238, 35, 0.30);
+  background-color: rgba(255, 242, 0, 0.30);
   color: #1d2939;
-  @apply dark:text-[#FCEE23];
+  @apply dark:text-[#FFF200];
 }
 
 @utility menu-dropdown-item-inactive {

@@ -61,6 +61,25 @@ class AuthController extends Controller
         return response()->json(Auth::guard('api')->user());
     }
 
+    public function updateAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+        ]);
+
+        $user = Auth::guard('api')->user();
+
+        if ($request->hasFile('avatar')) {
+            $user->clearMediaCollection('avatar');
+            $media = $user->addMediaFromRequest('avatar')->toMediaCollection('avatar');
+            
+            $user->avatar = $media->getUrl();
+            $user->save();
+        }
+
+        return response()->json($user);
+    }
+
     protected function createNewToken($token)
     {
         return response()->json([

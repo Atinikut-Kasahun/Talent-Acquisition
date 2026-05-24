@@ -8,6 +8,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ChatController;
 
 
 
@@ -25,6 +26,7 @@ Route::group(['middleware' => 'auth:api'], function () {
     
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::post('auth/refresh', [AuthController::class, 'refresh']);
+    Route::post('auth/avatar', [AuthController::class, 'updateAvatar']);
     Route::get('auth/me', [AuthController::class, 'me']);
 
     
@@ -57,4 +59,9 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     
     Route::get('admin/logs', [ActivityLogController::class, 'index']);
+
+    // Chat routes
+    Route::get('chat/users', [ChatController::class, 'users']);
+    Route::get('chat/conversation/{userId}', [ChatController::class, 'conversation']);
+    Route::post('chat/send', [ChatController::class, 'send']);
 });

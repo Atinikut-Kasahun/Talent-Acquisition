@@ -9,6 +9,18 @@ export default function UserDropdown() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Retrieve user data from localStorage
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser ? JSON.parse(storedUser) : null;
+  const userName = user?.name || "User";
+  const userEmail = user?.email || "user@droga.com";
+
+  const getAvatarUrl = (path: string | null) => {
+    if (!path) return "/HR.jpg";
+    if (path.startsWith("http")) return path;
+    return `http://127.0.0.1:8000${path.startsWith('/') ? path : '/' + path}`;
+  };
+
   function toggleDropdown() {
     setIsOpen(!isOpen);
   }
@@ -19,7 +31,7 @@ export default function UserDropdown() {
 
   async function handleSignOut() {
     closeDropdown();
-    const token = localStorage.getItem("at_token");
+    const token = localStorage.getItem("token");
     if (token) {
       try {
         await fetch(`${API_URL}/auth/logout`, {
@@ -33,7 +45,8 @@ export default function UserDropdown() {
         // Ignore network errors on logout
       }
     }
-    localStorage.removeItem("at_token");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     navigate("/careers");
   }
   return (
@@ -42,11 +55,11 @@ export default function UserDropdown() {
         onClick={toggleDropdown}
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          <img src="/HR.jpg" alt="User" className="w-full h-full object-cover" />
+        <span className="mr-3 overflow-hidden rounded-full h-11 w-11 border border-gray-200 dark:border-gray-800">
+          <img src={getAvatarUrl(user?.avatar)} alt="User" className="w-full h-full object-cover" />
         </span>
 
-        <span className="block mr-1 font-medium text-theme-sm">Fresh</span>
+        <span className="block mr-1 font-medium text-theme-sm">{userName.split(' ')[0]}</span>
         <svg
           className={`stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
@@ -74,10 +87,10 @@ export default function UserDropdown() {
       >
         <div>
           <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
-            Fresh Kebede
+            {userName}
           </span>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
-            freshk@droga.com
+            {userEmail}
           </span>
         </div>
 

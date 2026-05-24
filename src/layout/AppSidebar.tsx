@@ -22,63 +22,75 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-const navItems: NavItem[] = [
-  {
-    icon: <GridIcon />,
-    name: "Dashboard",
-    subItems: [{ name: "REPORTS", path: "/", pro: false }],
-  },
-  {
-    icon: <CalenderIcon />,
-    name: "Calendar",
-    path: "/calendar",
-  },
-  {
-    icon: <ListIcon />,
-    name: "JOBS",
-    path: "/jobs",
-  },
-  {
-    icon: <UserCircleIcon />,
-    name: "CANDIDATES",
-    path: "/candidates",
-  },
-  {
-    icon: <PageIcon />,
-    name: "HIRING PLAN",
-    path: "/hiring-plan",
-  },
-  {
-    icon: <UserCircleIcon />,
-    name: "User Profile",
-    path: "/profile",
-  },
-  {
-    icon: <MailIcon />,
-    name: "Inbox",
-    path: "/inbox",
-  },
-
-  {
-    name: "EMPLOYEES",
-    icon: <TableIcon />,
-    subItems: [{ name: "View Employees", path: "/basic-tables", pro: false }],
-  },
-  {
-    name: "Pages",
-    icon: <PageIcon />,
-    subItems: [
-      { name: "Blank Page", path: "/blank", pro: false },
-      { name: "404 Error", path: "/error-404", pro: false },
-    ],
-  },
-];
-
-
+// navItems moved inside component to be dynamic based on user role
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
+
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser ? JSON.parse(storedUser) : null;
+  const userRole = user?.role || "";
+
+  let dashboardSubItems = [{ name: "REPORT", path: "/", pro: false }];
+  if (userRole === "managing director") {
+    dashboardSubItems = [{ name: "MD DASHBOARD", path: "/md-dashboard", pro: false }];
+  } else if (userRole === "general Manager") {
+    dashboardSubItems = [{ name: "GM DASHBOARD", path: "/gm-dashboard", pro: false }];
+  } else if (userRole === "HR manager") {
+    dashboardSubItems = [{ name: "REPORT", path: "/hr-dashboard", pro: false }];
+  }
+
+  const navItems: NavItem[] = [
+    {
+      icon: <GridIcon />,
+      name: "Dashboard",
+      subItems: dashboardSubItems,
+    },
+    {
+      icon: <CalenderIcon />,
+      name: "Calendar",
+      path: "/calendar",
+    },
+    {
+      icon: <ListIcon />,
+      name: "JOBS",
+      path: "/jobs",
+    },
+    {
+      icon: <UserCircleIcon />,
+      name: "CANDIDATES",
+      path: "/candidates",
+    },
+    {
+      icon: <PageIcon />,
+      name: "HIRING PLAN",
+      path: "/hiring-plan",
+    },
+    {
+      icon: <UserCircleIcon />,
+      name: "User Profile",
+      path: "/profile",
+    },
+    {
+      icon: <MailIcon />,
+      name: "Chat",
+      path: "/chat",
+    },
+    {
+      name: "EMPLOYEES",
+      icon: <TableIcon />,
+      subItems: [{ name: "View Employees", path: "/basic-tables", pro: false }],
+    },
+    {
+      name: "Pages",
+      icon: <PageIcon />,
+      subItems: [
+        { name: "Blank Page", path: "/blank", pro: false },
+        { name: "404 Error", path: "/error-404", pro: false },
+      ],
+    },
+  ];
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";

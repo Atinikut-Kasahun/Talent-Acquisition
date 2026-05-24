@@ -195,22 +195,21 @@ layer(base);
 }
 
 @utility menu-item-active {
-  background-color: rgba(255, 242, 0, 0.30);
-  color: #1d2939;
-  @apply dark:text-[#FFF200];
-  @apply rounded-lg;
+  background-color: #FFF200;
+  color: #000;
+  @apply font-semibold rounded-lg;
 }
 
 @utility menu-item-inactive {
-  @apply text-gray-700 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-300;
+  @apply text-gray-700 dark:text-gray-300 hover:bg-[#FFF200]/30 hover:text-black dark:hover:bg-[#FFF200]/30 dark:hover:text-black;
 }
 
 @utility menu-item-icon {
-  @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400;
+  @apply text-gray-500 group-hover:text-yellow-900 dark:text-gray-400 dark:group-hover:text-yellow-100;
 }
 
 @utility menu-item-icon-active {
-  @apply text-gray-700 dark:text-[#FFF200];
+  @apply text-black;
 }
 
 @utility menu-item-icon-size {
@@ -220,7 +219,7 @@ layer(base);
 }
 
 @utility menu-item-icon-inactive {
-  @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300;
+  @apply text-gray-500 group-hover:text-yellow-900 dark:text-gray-400 dark:group-hover:text-yellow-100;
 }
 
 @utility menu-item-arrow {
@@ -240,13 +239,13 @@ layer(base);
 }
 
 @utility menu-dropdown-item-active {
-  background-color: rgba(255, 242, 0, 0.30);
-  color: #1d2939;
-  @apply dark:text-[#FFF200];
+  background-color: #FFF200;
+  color: #000;
+  @apply font-semibold;
 }
 
 @utility menu-dropdown-item-inactive {
-  @apply text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5;
+  @apply text-gray-700 dark:text-gray-300 hover:bg-[#FFF200]/30 hover:text-black dark:hover:bg-[#FFF200]/30 dark:hover:text-black;
 }
 
 @utility menu-dropdown-badge {

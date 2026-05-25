@@ -41,7 +41,7 @@ export default function StatisticsChart() {
       position: "top",
       horizontalAlign: "left",
     },
-    colors: ["#465FFF", "#9CB9FF"], // Define line colors
+    colors: ["#FFF200", "#9CB9FF"], // Use company color for primary series
     chart: {
       fontFamily: "Outfit, sans-serif",
       height: 310,

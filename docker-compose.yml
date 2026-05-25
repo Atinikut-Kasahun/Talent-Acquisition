@@ -1,0 +1,74 @@
+﻿version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: talent_db
+    restart: always
+    environment:
+      POSTGRES_DB: droga_careers
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Droga@2025
+    volumes:
+      - talent_db_data:/var/lib/postgresql/data
+    ports:
+      - "5438:5432"
+    networks:
+      - talent_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: talent_backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      APP_NAME: "Droga Group"
+      APP_ENV: production
+      APP_KEY: base64:Mx4Nn8TKgAm51+ReYF8gLU3zoAc8uNQTdmmWSPq+M9Q=
+      APP_DEBUG: false
+      APP_URL: http://196.189.117.188:8034
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: droga_careers
+      DB_USERNAME: postgres
+      DB_PASSWORD: Droga@2025
+      JWT_SECRET: FOhsilx3VqI0N9Urny2YE6Ti1EvkuMbgzBHWfsZU38hrz47Bu70zZFtFBLSHHNQL
+      JWT_TTL: 60
+      JWT_REFRESH_TTL: 20160
+      FILESYSTEM_DISK: public
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      MAIL_FROM_ADDRESS: "noreply@droga-group.com"
+      MAIL_FROM_NAME: "Droga Group"
+    volumes:
+      - talent_storage:/var/www/html/storage/app/public
+    ports:
+      - "8034:8000"
+    networks:
+      - talent_network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: talent_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3018:80"
+    networks:
+      - talent_network
+
+volumes:
+  talent_db_data:
+  talent_storage:
+
+networks:
+  talent_network:
+    driver: bridge

@@ -29,39 +29,42 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::post('auth/avatar', [AuthController::class, 'updateAvatar']);
     Route::get('auth/me', [AuthController::class, 'me']);
 
-    
-    Route::post('admin/jobs', [JobController::class, 'store']);
-    Route::put('admin/jobs/{id}', [JobController::class, 'update']);
-    Route::delete('admin/jobs/{id}', [JobController::class, 'destroy']);
-
-    
-    Route::get('admin/applications', [ApplicationController::class, 'index']);
-    Route::get('admin/applications/{id}', [ApplicationController::class, 'show']);
-    Route::put('admin/applications/{id}/status', [ApplicationController::class, 'updateStatus']);
-    Route::post('admin/applications/{id}/notes', [ApplicationController::class, 'updateNotes']);
-
-    
-    Route::post('admin/branches', [BranchController::class, 'store']);
-    Route::delete('admin/branches/{id}', [BranchController::class, 'destroy']);
-
-    
-    Route::get('admin/users', [UserController::class, 'index']);
-    Route::post('admin/users', [UserController::class, 'store']);
-    Route::put('admin/users/{id}', [UserController::class, 'update']);
-    Route::delete('admin/users/{id}', [UserController::class, 'destroy']);
-    Route::post('admin/users/{id}/reset-password', [UserController::class, 'resetPassword']);
-
-    
-    Route::get('admin/companies', [CompanyController::class, 'index']);
-    Route::post('admin/companies', [CompanyController::class, 'store']);
-    Route::put('admin/companies/{id}', [CompanyController::class, 'update']);
-    Route::delete('admin/companies/{id}', [CompanyController::class, 'destroy']);
-
-    
-    Route::get('admin/logs', [ActivityLogController::class, 'index']);
-
-    // Chat routes
+    // Chat routes (available to all authenticated users)
     Route::get('chat/users', [ChatController::class, 'users']);
     Route::get('chat/conversation/{userId}', [ChatController::class, 'conversation']);
     Route::post('chat/send', [ChatController::class, 'send']);
+
+    // Admin-only routes
+    Route::group(['middleware' => 'role:superadmin,admin'], function () {
+        
+        Route::post('admin/jobs', [JobController::class, 'store']);
+        Route::put('admin/jobs/{id}', [JobController::class, 'update']);
+        Route::delete('admin/jobs/{id}', [JobController::class, 'destroy']);
+
+        
+        Route::get('admin/applications', [ApplicationController::class, 'index']);
+        Route::get('admin/applications/{id}', [ApplicationController::class, 'show']);
+        Route::put('admin/applications/{id}/status', [ApplicationController::class, 'updateStatus']);
+        Route::post('admin/applications/{id}/notes', [ApplicationController::class, 'updateNotes']);
+
+        
+        Route::post('admin/branches', [BranchController::class, 'store']);
+        Route::delete('admin/branches/{id}', [BranchController::class, 'destroy']);
+
+        
+        Route::get('admin/users', [UserController::class, 'index']);
+        Route::post('admin/users', [UserController::class, 'store']);
+        Route::put('admin/users/{id}', [UserController::class, 'update']);
+        Route::delete('admin/users/{id}', [UserController::class, 'destroy']);
+        Route::post('admin/users/{id}/reset-password', [UserController::class, 'resetPassword']);
+
+        
+        Route::get('admin/companies', [CompanyController::class, 'index']);
+        Route::post('admin/companies', [CompanyController::class, 'store']);
+        Route::put('admin/companies/{id}', [CompanyController::class, 'update']);
+        Route::delete('admin/companies/{id}', [CompanyController::class, 'destroy']);
+
+        
+        Route::get('admin/logs', [ActivityLogController::class, 'index']);
+    });
 });

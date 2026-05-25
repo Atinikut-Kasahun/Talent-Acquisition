@@ -13,6 +13,8 @@ import HRManagerDashboard from "./pages/Dashboard/HRManagerDashboard";
 import SignIn from "./pages/SignIn";
 import Jobs from "./pages/Jobs";
 import Chat from "./pages/Chat";
+import ProtectedRoute from "./components/common/ProtectedRoute";
+import DashboardRedirect from "./components/common/DashboardRedirect";
 // Careers Public Pages
 import LandingPage from "./components/Careers/LandingPage";
 import JobDetail from "./components/Careers/JobDetail";
@@ -27,14 +29,55 @@ export default function App() {
           <Route path="/careers" element={<LandingPage />} />
           <Route path="/careers/jobs/:id" element={<JobDetail />} />
 
-          {/* ── Dashboard Layout (unchanged) ── */}
-          <Route element={<AppLayout />}>
-            <Route index path="/" element={<TADashboard />} />
-            <Route path="/md-dashboard" element={<ManagingDirectorDashboard />} />
-            <Route path="/gm-dashboard" element={<GeneralManagerDashboard />} />
-            <Route path="/hr-dashboard" element={<HRManagerDashboard />} />
+          {/* ── Auth ── */}
+          <Route path="/signin" element={<SignIn />} />
 
-            {/* Others Page */}
+          {/* ── Protected Dashboard Layout ── */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            }
+          >
+            {/* Home page - shows dashboard based on role */}
+            <Route index path="/" element={<DashboardRedirect />} />
+
+            {/* Role-specific dashboards (accessible directly by URL) */}
+            <Route
+              path="/ta-dashboard"
+              element={
+                <ProtectedRoute requiredRoles={["superadmin", "admin", "hr", "viewer"]}>
+                  <TADashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/md-dashboard"
+              element={
+                <ProtectedRoute requiredRoles={["managing director"]}>
+                  <ManagingDirectorDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/gm-dashboard"
+              element={
+                <ProtectedRoute requiredRoles={["general Manager"]}>
+                  <GeneralManagerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/hr-dashboard"
+              element={
+                <ProtectedRoute requiredRoles={["HR manager"]}>
+                  <HRManagerDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Other Pages */}
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/profile" element={<UserProfiles />} />
@@ -44,9 +87,6 @@ export default function App() {
             {/* Tables */}
             <Route path="/basic-tables" element={<BasicTables />} />
           </Route>
-
-          {/* Auth */}
-          <Route path="/signin" element={<SignIn />} />
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />

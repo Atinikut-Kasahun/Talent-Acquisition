@@ -1,14 +1,13 @@
 import { HelmetProvider, Helmet } from "react-helmet-async";
 
 const PageMeta = ({
-  title,
   description,
 }: {
-  title: string;
+  title?: string;
   description: string;
 }) => (
   <Helmet>
-    <title>{title}</title>
+    <title>Droga-Group</title>
     <meta name="description" content={description} />
   </Helmet>
 );

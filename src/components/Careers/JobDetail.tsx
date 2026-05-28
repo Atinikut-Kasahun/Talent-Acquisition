@@ -3,7 +3,9 @@ import { useParams, useLocation, useNavigate } from 'react-router';
 import '../../careers.css';
 import type { Job } from './LandingPage';
 
-const API_URL = 'http://127.0.0.1:8000/api';
+const API_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : "http://127.0.0.1:8000/api";
 
 interface ApplyForm {
   full_name: string;

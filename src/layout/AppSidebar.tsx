@@ -33,7 +33,9 @@ const AppSidebar: React.FC = () => {
   const userRole = user?.role || "";
 
   let dashboardSubItems = [{ name: "REPORT", path: "/", pro: false }];
-  if (userRole === "managing director") {
+  if (userRole === "superadmin") {
+    dashboardSubItems = [{ name: "ADMIN DASHBOARD", path: "/superadmin-dashboard", pro: false }];
+  } else if (userRole === "managing director") {
     dashboardSubItems = [{ name: "MD DASHBOARD", path: "/md-dashboard", pro: false }];
   } else if (userRole === "general Manager") {
     dashboardSubItems = [{ name: "GM DASHBOARD", path: "/gm-dashboard", pro: false }];
@@ -59,7 +61,7 @@ const AppSidebar: React.FC = () => {
     },
     {
       icon: <UserCircleIcon />,
-      name: "CANDIDATES",
+      name: "Applicants",
       path: "/candidates",
     },
     {
@@ -91,6 +93,20 @@ const AppSidebar: React.FC = () => {
       ],
     },
   ];
+
+  // Add Organizations section for superadmin as a primary section
+  if (userRole === "superadmin") {
+    const organizationsItem: NavItem = {
+      name: "Organizations",
+      icon: <GroupIcon />,
+      subItems: [
+        { name: "Manage Companies", path: "/manage-companies" },
+        { name: "Manage Users", path: "/manage-users" },
+      ],
+    };
+    // insert after the Dashboard item (at index 1)
+    navItems.splice(1, 0, organizationsItem);
+  }
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -164,9 +180,7 @@ const AppSidebar: React.FC = () => {
             <button
               onClick={() => handleSubmenuToggle(index, menuType)}
               className={`menu-item group ${
-                openSubmenu?.type === menuType && openSubmenu?.index === index
-                  ? "menu-item-active"
-                  : "menu-item-inactive"
+                (nav.path && isActive(nav.path)) ? "menu-item-active" : "menu-item-inactive"
               } cursor-pointer ${
                 !isExpanded && !isHovered
                   ? "lg:justify-center"
@@ -175,7 +189,7 @@ const AppSidebar: React.FC = () => {
             >
               <span
                 className={`menu-item-icon-size  ${
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
+                  (nav.path && isActive(nav.path))
                     ? "menu-item-icon-active"
                     : "menu-item-icon-inactive"
                 }`}

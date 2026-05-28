@@ -7,12 +7,16 @@ import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import TADashboard from "./pages/Dashboard/TADashboard";
+import SuperAdminDashboard from "./pages/Dashboard/SuperAdminDashboard";
 import ManagingDirectorDashboard from "./pages/Dashboard/ManagingDirectorDashboard";
 import GeneralManagerDashboard from "./pages/Dashboard/GeneralManagerDashboard";
 import HRManagerDashboard from "./pages/Dashboard/HRManagerDashboard";
+import ManageCompanies from "./pages/Organizations/ManageCompanies";
+import ManageUsers from "./pages/Organizations/ManageUsers";
 import SignIn from "./pages/SignIn";
 import Jobs from "./pages/Jobs";
 import Chat from "./pages/Chat";
+import Candidates from "./pages/Candidates";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import DashboardRedirect from "./components/common/DashboardRedirect";
 // Careers Public Pages
@@ -53,6 +57,30 @@ export default function App() {
               }
             />
             <Route
+              path="/superadmin-dashboard"
+              element={
+                <ProtectedRoute requiredRoles={["superadmin"]}>
+                  <SuperAdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manage-companies"
+              element={
+                <ProtectedRoute requiredRoles={["superadmin"]}>
+                  <ManageCompanies />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manage-users"
+              element={
+                <ProtectedRoute requiredRoles={["superadmin"]}>
+                  <ManageUsers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/md-dashboard"
               element={
                 <ProtectedRoute requiredRoles={["managing director"]}>
@@ -79,6 +107,7 @@ export default function App() {
 
             {/* Other Pages */}
             <Route path="/jobs" element={<Jobs />} />
+            <Route path="/candidates" element={<Candidates />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/profile" element={<UserProfiles />} />
             <Route path="/calendar" element={<Calendar />} />

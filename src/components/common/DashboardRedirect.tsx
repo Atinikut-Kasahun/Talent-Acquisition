@@ -15,7 +15,7 @@ export default function DashboardRedirect() {
 
     // Route to dashboard based on role
     const roleRoutes: Record<string, string> = {
-      superadmin: "/ta-dashboard",
+      superadmin: "/superadmin-dashboard",
       admin: "/ta-dashboard",
       hr: "/ta-dashboard",
       viewer: "/ta-dashboard",

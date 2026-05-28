@@ -2,7 +2,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import PageMeta from "../components/common/PageMeta";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 
-const API_URL = "http://127.0.0.1:8000/api";
+const API_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : "http://127.0.0.1:8000/api";
 
 interface ChatUser {
   id: string;
@@ -91,18 +93,6 @@ function timeAgo(dateStr: string): string {
 
 function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function shouldHideMessageBody(body?: string | null) {
-  if (!body) return false;
-  const b = body.trim().toLowerCase();
-  const forbiddenExact = ["jll"];
-  const forbidden = [
-    "so  cool  again ont eh same side bar   there is \"employees\"",
-    "hit me up about any thing right",
-  ];
-  if (forbiddenExact.includes(b)) return true;
-  return forbidden.some((f) => b.includes(f.slice(0, 40).toLowerCase()));
 }
 
 export default function Chat() {
@@ -262,7 +252,7 @@ export default function Chat() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-800 dark:text-white truncate">{user.name}</span>
-                    {user.last_message && !shouldHideMessageBody(user.last_message.body) && (
+                    {user.last_message && (
                       <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{timeAgo(user.last_message.created_at)}</span>
                       )}
                   </div>
@@ -274,7 +264,7 @@ export default function Chat() {
                       </span>
                     )}
                   </div>
-                  {user.last_message && !shouldHideMessageBody(user.last_message.body) && (
+                  {user.last_message && (
                     <p className="text-xs text-gray-400 truncate mt-0.5">{user.last_message.body}</p>
                   )}
                 </div>
@@ -334,17 +324,6 @@ export default function Chat() {
                   </div>
                 )}
                 {messages
-                  .filter((m) => {
-                    // Hide messages that match user-requested sensitive examples
-                    const forbidden = [
-                      "so  cool  again ont eh same side bar   there is \"EMPLOYEES\"  but near to  it   the icon is  not related to it  why   adjust  the icon of   \"EMPLOYEES\" sidebar section into exact  right   and  the same  for  \"JOBS\"  iconis  not correct  right , hit me up about any thing right",
-                      "hit me up about any thing right",
-                    ];
-                    const forbiddenExact = ["jll"];
-                    const body = (m.body || "").trim().toLowerCase();
-                    if (forbiddenExact.includes(body)) return false;
-                    return !forbidden.some((f) => body.includes(f.slice(0, 40).toLowerCase()));
-                  })
                   .map((msg, idx) => {
                   const isMe = msg.sender_id === me?.id;
                   const showDate =

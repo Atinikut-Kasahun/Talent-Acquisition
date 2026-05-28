@@ -27,20 +27,18 @@ export default function SignIn() {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.error || "Invalid credentials. Please try again.");
-        setLoading(false);
-        return;
+      if (res.ok) {
+        // Store the token
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        // Redirect to dashboard
+        navigate("/");
+      } else {
+        setError(data.error || data.message || "Invalid credentials. Please try again.");
       }
-
-      // Store the token
-      localStorage.setItem("token", data.access_token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      // Redirect to dashboard
-      navigate("/");
     } catch {
       setError("Unable to connect to the server. Please try again.");
+    } finally {
       setLoading(false);
     }
   };

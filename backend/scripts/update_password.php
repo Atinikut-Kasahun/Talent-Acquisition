@@ -6,12 +6,14 @@ $kernel->bootstrap();
 
 use App\Models\User;
 
-$email = 'freshk@droga.com';
+$email = $argv[1] ?? 'freshk@droga.com';
+$password = $argv[2] ?? 'password';
+
 $user = User::where('email', $email)->first();
 if (!$user) {
     echo "user not found\n";
     exit(1);
 }
-$user->password = bcrypt('password');
+$user->password = bcrypt($password);
 $user->save();
 echo "password updated for {$email}\n";

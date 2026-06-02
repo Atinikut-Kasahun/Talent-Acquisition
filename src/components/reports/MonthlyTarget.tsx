@@ -69,10 +69,10 @@ export default function MonthlyTarget() {
         <div className="flex justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-              Monthly Target
+              Hiring Goal Progress
             </h3>
             <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-              Target you’ve set for each month
+              Total positions to be filled this month
             </p>
           </div>
           <div className="relative inline-block">
@@ -114,8 +114,7 @@ export default function MonthlyTarget() {
           </span>
         </div>
         <p className="mx-auto mt-10 w-full max-w-[380px] text-center text-sm text-gray-500 sm:text-base">
-          You earn $3287 today, it's higher than last month. Keep up your good
-          work!
+          You've processed 35 new hires this month, keeping you ahead of the hiring plan. Great work!
         </p>
       </div>
 
@@ -125,7 +124,7 @@ export default function MonthlyTarget() {
             Target
           </p>
           <p className="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg">
-            $20K
+            50 Roles
             <svg
               width="16"
               height="16"
@@ -147,10 +146,10 @@ export default function MonthlyTarget() {
 
         <div>
           <p className="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
-            Revenue
+            Pipeline
           </p>
           <p className="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg">
-            $20K
+            8 Candidates
             <svg
               width="16"
               height="16"
@@ -172,10 +171,10 @@ export default function MonthlyTarget() {
 
         <div>
           <p className="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
-            Today
+            Filled
           </p>
           <p className="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg">
-            $20K
+            35 Hired
             <svg
               width="16"
               height="16"

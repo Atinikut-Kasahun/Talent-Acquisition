@@ -6,11 +6,7 @@ import BasicTables from "./pages/Tables/BasicTables";
 import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
-import TADashboard from "./pages/Dashboard/TADashboard";
-import SuperAdminDashboard from "./pages/Dashboard/SuperAdminDashboard";
-import ManagingDirectorDashboard from "./pages/Dashboard/ManagingDirectorDashboard";
-import GeneralManagerDashboard from "./pages/Dashboard/GeneralManagerDashboard";
-import HRManagerDashboard from "./pages/Dashboard/HRManagerDashboard";
+import Dashboard from "./pages/Dashboard/Dashboard";
 import ManageCompanies from "./pages/Organizations/ManageCompanies";
 import ManageUsers from "./pages/Organizations/ManageUsers";
 import SignIn from "./pages/SignIn";
@@ -44,26 +40,13 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            {/* Home page - shows dashboard based on role */}
+            {/* Home page - redirects to /dashboard */}
             <Route index path="/" element={<DashboardRedirect />} />
 
-            {/* Role-specific dashboards (accessible directly by URL) */}
-            <Route
-              path="/ta-dashboard"
-              element={
-                <ProtectedRoute requiredRoles={["superadmin", "admin", "hr", "viewer"]}>
-                  <TADashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/superadmin-dashboard"
-              element={
-                <ProtectedRoute requiredRoles={["superadmin"]}>
-                  <SuperAdminDashboard />
-                </ProtectedRoute>
-              }
-            />
+            {/* ── Single unified dashboard for all roles ── */}
+            <Route path="/dashboard" element={<Dashboard />} />
+
+            {/* ── Organizations (superadmin only) ── */}
             <Route
               path="/manage-companies"
               element={
@@ -80,32 +63,8 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/md-dashboard"
-              element={
-                <ProtectedRoute requiredRoles={["managing director"]}>
-                  <ManagingDirectorDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/gm-dashboard"
-              element={
-                <ProtectedRoute requiredRoles={["general Manager"]}>
-                  <GeneralManagerDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/hr-dashboard"
-              element={
-                <ProtectedRoute requiredRoles={["HR manager"]}>
-                  <HRManagerDashboard />
-                </ProtectedRoute>
-              }
-            />
 
-            {/* Other Pages */}
+            {/* ── Other Pages ── */}
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/candidates" element={<Candidates />} />
             <Route path="/chat" element={<Chat />} />

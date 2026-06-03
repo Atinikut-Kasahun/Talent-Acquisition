@@ -17,7 +17,8 @@ const API_URL = import.meta.env.VITE_API_URL
 
 interface Job {
   id: number;
-  position: string;
+  title: string;
+  position?: string;
   department: string;
   location: string;
   status: "Active" | "Closed" | "Pending";
@@ -51,7 +52,12 @@ export default function Jobs() {
           throw new Error(errData.message || "Failed to fetch jobs.");
         }
         const data = await res.json();
-        setJobs(data);
+        setJobs(
+          data.map((job: any) => ({
+            ...job,
+            position: job.position?.trim() ? job.position : job.title,
+          }))
+        );
       } catch (err: any) {
         setError(err.message || "An unexpected error occurred.");
       } finally {

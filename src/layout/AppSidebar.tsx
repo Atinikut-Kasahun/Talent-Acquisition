@@ -1,113 +1,47 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 
-// Assume these icons are imported from an icon library
-import {
-  CalenderIcon,
-  ChevronDownIcon,
-  GridIcon,
-  BoxIcon,
-  PageIcon,
-  GroupIcon,
-  UserCircleIcon,
-  MailIcon,
-} from "../icons";
+import { ChevronDownIcon } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-
-
-type NavItem = {
-  name: string;
-  icon: React.ReactNode;
-  path?: string;
-  subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
-};
-
-// navItems moved inside component to be dynamic based on user role
+import {
+  SIDEBAR_NAV_CONFIG,
+  type NavItem,
+  type UserRole,
+} from "../config/navigation.config";
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
 
+  // ── Get current user role from localStorage ──────────────────────────────
   const storedUser = localStorage.getItem("user");
   const user = storedUser ? JSON.parse(storedUser) : null;
-  const userRole = user?.role || "";
+  // .trim() guards against accidental leading/trailing whitespace from the API
+  const userRole: UserRole = (user?.role ?? "").trim() as UserRole;
 
-  let dashboardSubItems = [{ name: "REPORT", path: "/", pro: false }];
-  if (userRole === "superadmin") {
-    dashboardSubItems = [{ name: "ADMIN DASHBOARD", path: "/superadmin-dashboard", pro: false }];
-  } else if (userRole === "managing director") {
-    dashboardSubItems = [{ name: "MD DASHBOARD", path: "/md-dashboard", pro: false }];
-  } else if (userRole === "general Manager") {
-    dashboardSubItems = [{ name: "GM DASHBOARD", path: "/gm-dashboard", pro: false }];
-  } else if (userRole === "HR manager") {
-    dashboardSubItems = [{ name: "REPORT", path: "/hr-dashboard", pro: false }];
-  }
+  // DEBUG — remove after confirming role strings match
+  console.log("[Sidebar] userRole from localStorage:", JSON.stringify(userRole));
 
-  const navItems: NavItem[] = [
-    {
-      icon: <GridIcon />,
-      name: "Dashboard",
-      subItems: dashboardSubItems,
-    },
-    {
-      icon: <CalenderIcon />,
-      name: "Calendar",
-      path: "/calendar",
-    },
-    {
-      icon: <BoxIcon />,
-      name: "JOBS",
-      path: "/jobs",
-    },
-    {
-      icon: <UserCircleIcon />,
-      name: "Applicants",
-      path: "/candidates",
-    },
-    {
-      icon: <PageIcon />,
-      name: "HIRING PLAN",
-      path: "/hiring-plan",
-    },
-    {
-      icon: <UserCircleIcon />,
-      name: "User Profile",
-      path: "/profile",
-    },
-    {
-      icon: <MailIcon />,
-      name: "Chat",
-      path: "/chat",
-    },
-    {
-      name: "EMPLOYEES",
-      icon: <GroupIcon />,
-      subItems: [{ name: "View Employees", path: "/basic-tables", pro: false }],
-    },
-    {
-      name: "Pages",
-      icon: <PageIcon />,
-      subItems: [
-        { name: "Blank Page", path: "/blank", pro: false },
-        { name: "404 Error", path: "/error-404", pro: false },
-      ],
-    },
-  ];
+  // ── Case-insensitive role matcher (guards against casing mismatches) ──────
+  const roleMatch = (allowedRoles: UserRole[]) =>
+    allowedRoles.some(
+      (r) => r.toLowerCase() === (userRole as string).toLowerCase()
+    );
 
-  // Add Organizations section for superadmin as a primary section
-  if (userRole === "superadmin") {
-    const organizationsItem: NavItem = {
-      name: "Organizations",
-      icon: <GroupIcon />,
-      subItems: [
-        { name: "Manage Companies", path: "/manage-companies" },
-        { name: "Manage Users", path: "/manage-users" },
-      ],
-    };
-    // insert after the Dashboard item (at index 1)
-    navItems.splice(1, 0, organizationsItem);
-  }
+  // ── Filter nav items by role (data-driven) ───────────────────────────────
+  const navItems: NavItem[] = SIDEBAR_NAV_CONFIG.filter((item) =>
+    roleMatch(item.roles)
+  ).map((item) => ({
+    ...item,
+    // Also filter sub-items if they carry their own role guard
+    subItems: item.subItems
+      ? item.subItems.filter(
+          (sub) => !sub.roles || roleMatch(sub.roles)
+        )
+      : undefined,
+  }));
 
+  // ── Submenu state ─────────────────────────────────────────────────────────
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
     index: number;
@@ -117,7 +51,6 @@ const AppSidebar: React.FC = () => {
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // const isActive = (path: string) => location.pathname === path;
   const isActive = useCallback(
     (path: string) => location.pathname === path,
     [location.pathname]
@@ -125,23 +58,16 @@ const AppSidebar: React.FC = () => {
 
   useEffect(() => {
     let submenuMatched = false;
-    ["main"].forEach((_menuType) => {
-      const items = navItems;
-      items.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: "main",
-                index,
-              });
-              submenuMatched = true;
-            }
-          });
-        }
-      });
+    navItems.forEach((nav, index) => {
+      if (nav.subItems) {
+        nav.subItems.forEach((subItem) => {
+          if (isActive(subItem.path)) {
+            setOpenSubmenu({ type: "main", index });
+            submenuMatched = true;
+          }
+        });
+      }
     });
-
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
@@ -180,7 +106,9 @@ const AppSidebar: React.FC = () => {
             <button
               onClick={() => handleSubmenuToggle(index, menuType)}
               className={`menu-item group ${
-                (nav.path && isActive(nav.path)) ? "menu-item-active" : "menu-item-inactive"
+                nav.path && isActive(nav.path)
+                  ? "menu-item-active"
+                  : "menu-item-inactive"
               } cursor-pointer ${
                 !isExpanded && !isHovered
                   ? "lg:justify-center"
@@ -189,7 +117,7 @@ const AppSidebar: React.FC = () => {
             >
               <span
                 className={`menu-item-icon-size  ${
-                  (nav.path && isActive(nav.path))
+                  nav.path && isActive(nav.path)
                     ? "menu-item-icon-active"
                     : "menu-item-icon-inactive"
                 }`}

@@ -6,7 +6,7 @@ import RecentApplicants from "../../components/reports/RecentApplicants";
 import DemographicCard from "../../components/reports/DemographicCard";
 import PageMeta from "../../components/common/PageMeta";
 
-export default function TADashboard() {
+export default function Dashboard() {
   const storedUser = localStorage.getItem("user");
   const user = storedUser ? JSON.parse(storedUser) : null;
   const hideReportsForSuperAdmin = user?.email === "superadmin@droga-group.com";
@@ -14,7 +14,7 @@ export default function TADashboard() {
   return (
     <>
       <PageMeta
-        title="Droga Group | HR Dashboard"
+        title="Droga Group | Dashboard"
         description="Droga Group HR Management Dashboard - Manage job postings, applicants, and recruitment."
       />
 

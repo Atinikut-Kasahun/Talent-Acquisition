@@ -13,19 +13,8 @@ export default function DashboardRedirect() {
       return;
     }
 
-    // Route to dashboard based on role
-    const roleRoutes: Record<string, string> = {
-      superadmin: "/superadmin-dashboard",
-      admin: "/ta-dashboard",
-      hr: "/ta-dashboard",
-      viewer: "/ta-dashboard",
-      "managing director": "/md-dashboard",
-      "general Manager": "/gm-dashboard",
-      "HR manager": "/hr-dashboard",
-    };
-
-    const dashboardPath = roleRoutes[user.role] || "/ta-dashboard";
-    navigate(dashboardPath, { replace: true });
+    // All roles share the single unified dashboard
+    navigate("/dashboard", { replace: true });
   }, [navigate]);
 
   return <div>Loading...</div>;

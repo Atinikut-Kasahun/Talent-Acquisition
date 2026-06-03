@@ -29,7 +29,7 @@ const tableData: Employee[] = [
     id: 1,
     user: {
       image: "/images/user/user-17.jpg",
-      name: "Lindsey Curtis",
+      name: "Abraham Dawit",
       role: "Web Designer",
     },
     appliedFor: "Senior Web Designer",
@@ -43,7 +43,7 @@ const tableData: Employee[] = [
     id: 2,
     user: {
       image: "/images/user/user-18.jpg",
-      name: "Kaiya George",
+      name: "Dagim Girma",
       role: "Project Manager",
     },
     appliedFor: "Lead Project Manager",
@@ -57,7 +57,7 @@ const tableData: Employee[] = [
     id: 3,
     user: {
       image: "/images/user/user-17.jpg",
-      name: "Zain Geidt",
+      name: "Bereket   mena",
       role: "Content Writing",
     },
     appliedFor: "Content Writer",
@@ -71,7 +71,7 @@ const tableData: Employee[] = [
     id: 4,
     user: {
       image: "/images/user/user-20.jpg",
-      name: "Abram Schleifer",
+      name: "Abram Melkamu",
       role: "Digital Marketer",
     },
     appliedFor: "Marketing Lead",
@@ -85,7 +85,7 @@ const tableData: Employee[] = [
     id: 5,
     user: {
       image: "/images/user/user-21.jpg",
-      name: "Carla George",
+      name: "Mehiret Tsegaye",
       role: "Front-end Developer",
     },
     appliedFor: "React Developer",

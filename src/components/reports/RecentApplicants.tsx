@@ -21,7 +21,7 @@ interface Applicant {
 const tableData: Applicant[] = [
   {
     id: 1,
-    name: "Mena Melkamu",
+    name: "Yosef girma",
     image: "/images/user/user-17.jpg",
     appliedFor: "Senior Web Designer",
     department: "Design",
@@ -41,7 +41,7 @@ const tableData: Applicant[] = [
   },
   {
     id: 3,
-    name: "Sameawit Moges",
+    name: "Sisay Moges",
     image: "/images/user/user-17.jpg",
     appliedFor: "Content Writer",
     department: "Marketing",
@@ -51,7 +51,7 @@ const tableData: Applicant[] = [
   },
   {
     id: 4,
-    name: "Rediet Sisay",
+    name: "Yeabsira Sisay",
     image: "/images/user/user-20.jpg",
     appliedFor: "Marketing Lead",
     department: "Marketing",
@@ -61,7 +61,7 @@ const tableData: Applicant[] = [
   },
   {
     id: 5,
-    name: "Abrham Eyob",
+    name: "Debora geressu",
     image: "/images/user/user-21.jpg",
     appliedFor: "React Developer",
     department: "Engineering",

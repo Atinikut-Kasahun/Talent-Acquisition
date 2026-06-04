@@ -6,7 +6,6 @@ import {
   TableBody,
   TableCell,
   TableHeader,
-  TableHead,
   TableRow,
 } from "../components/ui/table";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";

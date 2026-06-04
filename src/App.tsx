@@ -18,6 +18,7 @@ import DashboardRedirect from "./components/common/DashboardRedirect";
 // Careers Public Pages
 import LandingPage from "./components/Careers/LandingPage";
 import JobDetail from "./components/Careers/JobDetail";
+import HiringPlanGM from "./pages/HiringPlan/HiringPlanGM";
 
 export default function App() {
   return (
@@ -60,6 +61,16 @@ export default function App() {
               element={
                 <ProtectedRoute requiredRoles={["superadmin"]}>
                   <ManageUsers />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ── Hiring Plan ── */}
+            <Route
+              path="/hiring-plan"
+              element={
+                <ProtectedRoute requiredRoles={["general Manager"]}>
+                  <HiringPlanGM />
                 </ProtectedRoute>
               }
             />

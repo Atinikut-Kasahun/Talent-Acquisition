@@ -17,7 +17,7 @@ export default function UserMetaCard() {
   const getAvatarUrl = (path: string | null) => {
     if (!path) return "/HR.jpg";
     if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000${path.startsWith('/') ? path : '/' + path}`;
+    return `import.meta.env.VITE_API_BASE_URL?.replace(`"/api`",`"`")${path.startsWith('/') ? path : '/' + path}`;
   };
 
   const [profileData, setProfileData] = useState({
@@ -41,7 +41,7 @@ export default function UserMetaCard() {
 
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/auth/avatar", {
+      const res = await fetch("import.meta.env.VITE_API_BASE_URL/auth/avatar", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`

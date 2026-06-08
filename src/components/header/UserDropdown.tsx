@@ -3,7 +3,7 @@ import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { useNavigate } from "react-router";
 
-const API_URL = "http://127.0.0.1:8000/api";
+const API_URL = "import.meta.env.VITE_API_BASE_URL";
 
 export default function UserDropdown() {
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ export default function UserDropdown() {
   const getAvatarUrl = (path: string | null) => {
     if (!path) return "/HR.jpg";
     if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000${path.startsWith('/') ? path : '/' + path}`;
+    return `import.meta.env.VITE_API_BASE_URL?.replace(`"/api`",`"`")${path.startsWith('/') ? path : '/' + path}`;
   };
 
   function toggleDropdown() {

@@ -4,7 +4,7 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 
 const API_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
-  : "http://127.0.0.1:8000/api";
+  : "import.meta.env.VITE_API_BASE_URL";
 
 interface ChatUser {
   id: string;
@@ -36,7 +36,7 @@ interface Message {
 function getAvatarUrl(path: string | null): string {
   if (!path) return null as unknown as string;
   if (path.startsWith("http")) return path;
-  return `http://127.0.0.1:8000${path.startsWith("/") ? path : "/" + path}`;
+  return `import.meta.env.VITE_API_BASE_URL?.replace(`"/api`",`"`")${path.startsWith("/") ? path : "/" + path}`;
 }
 
 function AvatarFallback({ name, size = 40 }: { name: string; size?: number }) {

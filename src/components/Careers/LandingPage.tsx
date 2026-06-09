@@ -29,7 +29,7 @@ export interface Job {
   id: number;
   title: string;
   location: string;
-  dept: string;
+  department: string;
   type: string;
   about: string;
   whatYouDo: string[];
@@ -92,7 +92,7 @@ const LandingPage = () => {
     () =>
       jobs.filter((job) => {
         const locMatch = locationFilter === 'all' || (job.location || '').includes(locationFilter);
-        const deptMatch = deptFilter === 'all' || job.dept === deptFilter;
+        const deptMatch = deptFilter === 'all' || job.department === deptFilter;
         return locMatch && deptMatch;
       }),
     [locationFilter, deptFilter, jobs]

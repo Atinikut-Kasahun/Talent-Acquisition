@@ -99,9 +99,9 @@ export default function NotificationDropdown() {
                   <span className="font-medium text-gray-800 dark:text-white/90">
                     Neba
                   </span>
-                  <span> requests permission to change</span>
+                  <span> shall i make them work half day or  what </span>
                   <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
+                    yes goahead do it correctly 
                   </span>
                 </span>
 
@@ -137,7 +137,7 @@ export default function NotificationDropdown() {
                   </span>
                   <span>requests permission to change</span>
                   <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
+                    Project - expanding   the pharma
                   </span>
                 </span>
 
@@ -173,7 +173,7 @@ export default function NotificationDropdown() {
                   </span>
                   <span> requests permission to change</span>
                   <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
+                    they  should  bring  their certification to the office
                   </span>
                 </span>
 
@@ -210,7 +210,7 @@ export default function NotificationDropdown() {
                   </span>
                   <span>requests permission to change</span>
                   <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
+                    Ok thank you 
                   </span>
                 </span>
 
@@ -246,7 +246,7 @@ export default function NotificationDropdown() {
                   </span>
                   <span> requests permission to change</span>
                   <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
+                    Project - at Finance
                   </span>
                 </span>
 
@@ -282,7 +282,7 @@ export default function NotificationDropdown() {
                   </span>
                   <span> requests permission to change</span>
                   <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
+                    Notify him  he should be  aware of  this  things  right 
                   </span>
                 </span>
 
@@ -318,7 +318,7 @@ export default function NotificationDropdown() {
                   </span>
                   <span> requests permission to change</span>
                   <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
+                    what about  employees should  be aware of  them  
                   </span>
                 </span>
 
@@ -354,7 +354,7 @@ export default function NotificationDropdown() {
                   </span>
                   <span>requests permission to change</span>
                   <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
+                    ok  I agree  whith  that  but before that i  have an idea 
                   </span>
                 </span>
 

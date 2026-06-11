@@ -90,9 +90,9 @@ export const SIDEBAR_NAV_CONFIG: NavItem[] = [
     roles: ALL_ROLES,
   },
 
-  // ── Jobs ─────────────────────────────────────────────────────────────────
+  // ── Active Postings ───────────────────────────────────────────────────────
   {
-    name: "JOBS",
+    name: "Active Postings",
     icon: <BoxIcon />,
     path: "/jobs",
     roles: ALL_ROLES,

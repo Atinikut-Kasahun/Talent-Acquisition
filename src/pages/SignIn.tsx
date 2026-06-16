@@ -142,7 +142,7 @@ export default function SignIn() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 text-white font-semibold rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-brand-500/30 mt-2"
+              className="w-full py-3 px-4 bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 text-gray-900 font-semibold rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-brand-500/30 mt-2"
             >
               {loading ? (
                 <>
@@ -162,7 +162,7 @@ export default function SignIn() {
           <p className="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <button
               onClick={() => navigate("/careers")}
-              className="text-brand-500 hover:text-brand-600 font-medium transition"
+              className="text-brand-700 hover:text-brand-800 font-medium transition"
             >
               ← Back to Careers
             </button>

@@ -9,7 +9,15 @@ class Message extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['sender_id', 'receiver_id', 'body', 'read'];
+    protected $fillable = [
+        'sender_id', 
+        'receiver_id', 
+        'body', 
+        'read', 
+        'attachment_url', 
+        'attachment_type', 
+        'attachment_name'
+    ];
 
     public function sender()
     {

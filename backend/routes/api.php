@@ -27,12 +27,16 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::post('auth/refresh', [AuthController::class, 'refresh']);
     Route::post('auth/avatar', [AuthController::class, 'updateAvatar']);
+    Route::put('auth/profile', [AuthController::class, 'updateProfile']);
     Route::get('auth/me', [AuthController::class, 'me']);
 
     // Chat routes (available to all authenticated users)
     Route::get('chat/users', [ChatController::class, 'users']);
     Route::get('chat/conversation/{userId}', [ChatController::class, 'conversation']);
+    Route::delete('chat/conversation/{userId}', [ChatController::class, 'deleteConversation']);
+    Route::post('chat/messages/delete', [ChatController::class, 'deleteMessages']);
     Route::post('chat/send', [ChatController::class, 'send']);
+    Route::get('chat/notifications', [ChatController::class, 'notifications']);
 
     // Admin-only routes
     Route::group(['middleware' => 'role:superadmin,admin'], function () {

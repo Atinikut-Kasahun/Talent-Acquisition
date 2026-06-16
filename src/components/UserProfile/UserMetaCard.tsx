@@ -5,6 +5,36 @@ import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 
+const API_URL = import.meta.env.VITE_API_BASE_URL;
+
+/** Shared premium toast */
+function Toast({ visible, message, type }: { visible: boolean; message: string; type: "success" | "error" }) {
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-4 px-5 py-4
+        bg-white dark:bg-gray-800 text-gray-800 dark:text-white
+        border border-gray-100 dark:border-gray-700
+        rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]
+        transition-all duration-500 ease-out transform
+        ${visible ? "translate-y-0 opacity-100 scale-100" : "translate-y-10 opacity-0 scale-95 pointer-events-none"}`}
+    >
+      <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
+        ${type === "success" ? "bg-green-50 dark:bg-green-500/10" : "bg-red-50 dark:bg-red-500/10"}`}>
+        {type === "success" ? (
+          <svg className="w-5 h-5 text-green-500 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+          </svg>
+        ) : (
+          <svg className="w-5 h-5 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        )}
+      </div>
+      <p className="text-[15px] font-medium pr-3">{message}</p>
+    </div>
+  );
+}
+
 export default function UserMetaCard() {
   const { isOpen, openModal, closeModal } = useModal();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,14 +88,47 @@ export default function UserMetaCard() {
     }
   };
 
+  const [toast, setToast] = useState({ visible: false, message: "", type: "success" as "success" | "error" });
+  const [saving, setSaving] = useState(false);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
+  };
+
   const handleOpenModal = () => {
     setTempData(profileData);
     openModal();
   };
 
-  const handleSave = () => {
-    setProfileData(tempData);
-    closeModal();
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setSaving(true);
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`${API_URL}/auth/profile`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ name: tempData.name }),
+      });
+      if (res.ok) {
+        const updatedUser = await res.json();
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        setProfileData(tempData);
+        closeModal();
+        showToast("Profile updated successfully");
+      } else {
+        showToast("Failed to save profile. Please try again.", "error");
+      }
+    } catch {
+      showToast("Network error. Please check your connection.", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -168,7 +231,7 @@ export default function UserMetaCard() {
               Update your details to keep your profile up-to-date.
             </p>
           </div>
-          <form className="flex flex-col" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+          <form className="flex flex-col" onSubmit={handleSave}>
             <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
               <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                 <div className="col-span-2 lg:col-span-1">
@@ -208,13 +271,14 @@ export default function UserMetaCard() {
               <Button size="sm" variant="outline" onClick={closeModal} type="button">
                 Close
               </Button>
-              <Button size="sm" type="submit">
-                Save Changes
+              <Button size="sm" type="submit" disabled={saving}>
+                {saving ? "Saving…" : "Save Changes"}
               </Button>
             </div>
           </form>
         </div>
       </Modal>
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} />
     </>
   );
 }

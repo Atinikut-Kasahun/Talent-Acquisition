@@ -61,6 +61,21 @@ class AuthController extends Controller
         return response()->json(Auth::guard('api')->user());
     }
 
+    public function updateProfile(Request $request)
+    {
+        $request->validate([
+            'name'  => 'sometimes|string|max:255',
+            'phone' => 'sometimes|nullable|string|max:30',
+        ]);
+
+        $user = Auth::guard('api')->user();
+        $user->fill($request->only(['name', 'phone']));
+        $user->save();
+
+        // Return updated user so frontend can refresh localStorage
+        return response()->json($user);
+    }
+
     public function updateAvatar(Request $request)
     {
         $request->validate([

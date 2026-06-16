@@ -25,6 +25,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
         'avatar',
         'is_active',
         'company_id',
+        'phone',
     ];
 
     public function company()

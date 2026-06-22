@@ -7,6 +7,7 @@ use App\Models\JobPosting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Activitylog\Models\Activity;
 
 class ApplicationController extends Controller
 {
@@ -32,11 +33,39 @@ class ApplicationController extends Controller
     
     public function show($id)
     {
-        $application = JobApplication::with(['jobPosting', 'reviewer'])->findOrFail($id);
-        
-        
-        $resumeUrl = $application->getFirstMediaUrl('resume');
-        $application->resume_url = $resumeUrl ? asset($resumeUrl) : null;
+        $application = JobApplication::with(['jobPosting', 'reviewer', 'media'])->findOrFail($id);
+
+        // Build structured media payload
+        $resumeMedia  = $application->getFirstMedia('resume');
+        $photoMedia   = $application->getFirstMedia('photo');
+        $certMedia    = $application->getMedia('certifications');
+
+        $application->resume_url = $resumeMedia  ? $resumeMedia->getUrl()  : null;
+        $application->photo_url  = $photoMedia   ? $photoMedia->getUrl()   : null;
+
+        $application->certifications_list = $certMedia->map(fn($m) => [
+            'name'         => $m->name,
+            'file_name'    => $m->file_name,
+            'url'          => $m->getUrl(),
+            'mime_type'    => $m->mime_type,
+            'size'         => $m->human_readable_size,
+        ]);
+
+        // Activity log (most recent 20 events)
+        $activity = Activity::where('subject_type', JobApplication::class)
+            ->where('subject_id', $application->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(20)
+            ->get()
+            ->map(fn($a) => [
+                'id'          => $a->id,
+                'description' => $a->description,
+                'causer'      => $a->causer ? $a->causer->name : 'System',
+                'properties'  => $a->properties,
+                'created_at'  => $a->created_at->toISOString(),
+            ]);
+
+        $application->activity_log = $activity;
 
         return response()->json($application);
     }
@@ -58,6 +87,8 @@ class ApplicationController extends Controller
             'referred_by' => 'nullable|string|max:255',
             'resume' => 'required|file|mimes:pdf,doc,docx|max:10240', 
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'cert_files' => 'nullable|array',
+            'cert_files.*' => 'file|mimes:pdf,jpeg,png,jpg,webp|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -88,6 +119,26 @@ class ApplicationController extends Controller
         if ($request->hasFile('photo')) {
             $application->addMediaFromRequest('photo')
                 ->toMediaCollection('photo');
+        }
+
+        if ($request->hasFile('cert_files')) {
+            $certNames = [];
+            if (!empty($request->answers) && isset($request->answers['certifications'])) {
+                $certNames = json_decode($request->answers['certifications'], true) ?: [];
+            }
+            
+            $files = $request->file('cert_files');
+            // If it's not an array for some reason, wrap it
+            if (!is_array($files)) {
+                $files = [$files];
+            }
+            
+            foreach (array_values($files) as $index => $file) {
+                $customName = $certNames[$index] ?? pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                $application->addMedia($file)
+                    ->usingName($customName)
+                    ->toMediaCollection('certifications');
+            }
         }
 
         
@@ -165,6 +216,32 @@ class ApplicationController extends Controller
         return response()->json([
             'message' => 'Application notes updated successfully!',
             'application' => $application
+        ]);
+    }
+
+    /**
+     * Toggle the is_starred (recruiter bookmark) flag on an application.
+     */
+    public function toggleStar($id)
+    {
+        $application = JobApplication::findOrFail($id);
+        $user = Auth::guard('api')->user();
+
+        $application->update([
+            'is_starred' => !$application->is_starred,
+        ]);
+
+        $action = $application->is_starred ? 'Starred' : 'Unstarred';
+
+        activity()
+            ->performedOn($application)
+            ->causedBy($user)
+            ->withProperties(['is_starred' => $application->is_starred])
+            ->log("{$action} application for: {$application->first_name} {$application->last_name}");
+
+        return response()->json([
+            'message'    => "Application {$action} successfully!",
+            'is_starred' => $application->is_starred,
         ]);
     }
 }

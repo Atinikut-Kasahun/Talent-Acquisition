@@ -38,18 +38,21 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::post('chat/send', [ChatController::class, 'send']);
     Route::get('chat/notifications', [ChatController::class, 'notifications']);
 
+    // Applications routes (broader access based on frontend navigation config)
+    Route::group(['middleware' => 'role:superadmin,admin,hr,viewer,managing director,HR manager'], function () {
+        Route::get('admin/applications', [ApplicationController::class, 'index']);
+        Route::get('admin/applications/{id}', [ApplicationController::class, 'show']);
+        Route::put('admin/applications/{id}/status', [ApplicationController::class, 'updateStatus']);
+        Route::post('admin/applications/{id}/notes', [ApplicationController::class, 'updateNotes']);
+        Route::patch('admin/applications/{id}/star', [ApplicationController::class, 'toggleStar']);
+    });
+
     // Admin-only routes
     Route::group(['middleware' => 'role:superadmin,admin'], function () {
         
         Route::post('admin/jobs', [JobController::class, 'store']);
         Route::put('admin/jobs/{id}', [JobController::class, 'update']);
         Route::delete('admin/jobs/{id}', [JobController::class, 'destroy']);
-
-        
-        Route::get('admin/applications', [ApplicationController::class, 'index']);
-        Route::get('admin/applications/{id}', [ApplicationController::class, 'show']);
-        Route::put('admin/applications/{id}/status', [ApplicationController::class, 'updateStatus']);
-        Route::post('admin/applications/{id}/notes', [ApplicationController::class, 'updateNotes']);
 
         
         Route::post('admin/branches', [BranchController::class, 'store']);

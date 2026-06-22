@@ -109,6 +109,7 @@ export default function Chat() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState(false);
   const [sending, setSending] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showOptions, setShowOptions] = useState(false);
@@ -120,11 +121,11 @@ export default function Chat() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const authHeaders = {
-    Authorization: `Bearer ${token}`,
+  const getAuthHeaders = () => ({
+    Authorization: `Bearer ${localStorage.getItem("token")}`,
     "Content-Type": "application/json",
     Accept: "application/json",
-  };
+  });
 
   const toggleMessageSelection = (msgId: string) => {
     setSelectedMessages(prev => 
@@ -161,7 +162,7 @@ export default function Chat() {
         try {
           const res = await fetch(`${API_URL}/chat/messages/delete`, {
             method: "POST",
-            headers: authHeaders,
+            headers: getAuthHeaders(),
             body: JSON.stringify({ message_ids: selectedMessages }),
           });
           if (res.ok) {
@@ -186,7 +187,7 @@ export default function Chat() {
         try {
           const res = await fetch(`${API_URL}/chat/conversation/${selectedUser.id}`, {
             method: "DELETE",
-            headers: authHeaders,
+            headers: getAuthHeaders(),
           });
           if (res.ok) {
             setMessages([]);
@@ -211,23 +212,33 @@ export default function Chat() {
     showToast(isMuted ? "Notifications unmuted" : "Notifications muted");
   };
 
-  // Fetch user list
-  const fetchUsers = useCallback(async () => {
+  // Fetch user list — with auto-retry on failure
+  const fetchUsers = useCallback(async (attempt = 1) => {
     try {
-      const res = await fetch(`${API_URL}/chat/users`, { headers: authHeaders });
+      setUsersError(false);
+      const res = await fetch(`${API_URL}/chat/users`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setUsers(data);
+        setUsersLoading(false);
+      } else {
+        throw new Error(`HTTP ${res.status}`);
       }
-    } catch (_) {} finally {
-      setUsersLoading(false);
+    } catch (_) {
+      if (attempt < 4) {
+        // Auto-retry up to 3 times with increasing delay
+        setTimeout(() => fetchUsers(attempt + 1), attempt * 2000);
+      } else {
+        setUsersError(true);
+        setUsersLoading(false);
+      }
     }
   }, []);
 
   // Fetch conversation with selected user
   const fetchConversation = useCallback(async (userId: string) => {
     try {
-      const res = await fetch(`${API_URL}/chat/conversation/${userId}`, { headers: authHeaders });
+      const res = await fetch(`${API_URL}/chat/conversation/${userId}`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setMessages(data);
@@ -379,11 +390,27 @@ export default function Chat() {
               `}</style>
               
               {usersLoading ? (
-                <div className="flex justify-center mt-8">
+                <div className="flex flex-col items-center justify-center mt-8 gap-2">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-400" />
+                  <p className="text-xs text-gray-400">Loading users...</p>
                 </div>
+              ) : usersError ? (
+                <div className="flex flex-col items-center justify-center mt-8 gap-3 px-4">
+                  <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                  <p className="text-center text-sm text-gray-400">Could not load users</p>
+                  <button
+                    onClick={() => { setUsersLoading(true); fetchUsers(); }}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : filteredUsers.length === 0 && search ? (
+                <p className="text-center text-sm text-gray-400 mt-8">No results for "{search}"</p>
               ) : filteredUsers.length === 0 ? (
-                <p className="text-center text-sm text-gray-400 mt-8">No users found</p>
+                <p className="text-center text-sm text-gray-400 mt-8">No other users yet</p>
               ) : (
                 filteredUsers.map((user) => (
                   <button

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import PageMeta from "../components/common/PageMeta";
 import Badge from "../components/ui/badge/Badge";
 import {
@@ -27,6 +27,19 @@ export default function Jobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -190,11 +203,72 @@ export default function Jobs() {
                         </div>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        <button className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition">
-                          <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path fillRule="evenodd" clipRule="evenodd" d="M9 3C8.44772 3 8 3.44772 8 4V5H4C3.44772 5 3 5.44772 3 6C3 6.55228 3.44772 7 4 7H5V19C5 20.6569 6.34315 22 8 22H16C17.6569 22 19 20.6569 19 19V7H20C20.5523 7 21 6.55228 21 6C21 5.44772 20.5523 5 20 5H16V4C16 3.44772 15.5523 3 15 3H9ZM10 5V4H14V5H10ZM7 7H17V19C17 19.5523 16.5523 20 16 20H8C7.44772 20 7 19.5523 7 19V7ZM9 10C9.55228 10 10 10.4477 10 11V16C10 16.5523 9.55228 17 9 17C8.44772 17 8 16.5523 8 16V11C8 10.4477 8.44772 10 9 10ZM15 10C15.5523 10 16 10.4477 16 11V16C16 16.5523 15.5523 17 15 17C14.4477 17 14 16.5523 14 16V11C14 10.4477 14.4477 10 15 10Z" />
-                          </svg>
-                        </button>
+                        <div className="relative" ref={openMenuId === job.id ? menuRef : null}>
+                          {/* Three-dot trigger */}
+                          <button
+                            onClick={() => setOpenMenuId(openMenuId === job.id ? null : job.id)}
+                            className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition"
+                            aria-label="Actions"
+                          >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                              <circle cx="5" cy="12" r="1.5" />
+                              <circle cx="12" cy="12" r="1.5" />
+                              <circle cx="19" cy="12" r="1.5" />
+                            </svg>
+                          </button>
+
+                          {/* Dropdown menu */}
+                          {openMenuId === job.id && (
+                            <div className="absolute right-0 z-50 mt-1 w-44 rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 py-1 animate-fade-in">
+                              {/* Edit */}
+                              <button
+                                onClick={() => { setOpenMenuId(null); }}
+                                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700 transition"
+                              >
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Edit
+                              </button>
+
+                              {/* Duplicate */}
+                              <button
+                                onClick={() => { setOpenMenuId(null); }}
+                                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700 transition"
+                              >
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                Duplicate
+                              </button>
+
+                              {/* Archive */}
+                              <button
+                                onClick={() => { setOpenMenuId(null); }}
+                                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700 transition"
+                              >
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                </svg>
+                                Archive
+                              </button>
+
+                              {/* Divider */}
+                              <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                              {/* Delete */}
+                              <button
+                                onClick={() => { setOpenMenuId(null); }}
+                                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

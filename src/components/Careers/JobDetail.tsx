@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router';
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.css';
 import '../../careers.css';
 import type { Job } from './LandingPage';
 
@@ -15,7 +17,7 @@ interface ApplyForm {
   education_level: string;
   field_of_study: string;
   institution: string;
-  certifications: string;
+  certifications: Array<{ name: string; file: File | null }>;
   graduation_year: string;
   cgpa: string;
   experience_years: string;
@@ -43,7 +45,7 @@ const emptyForm: ApplyForm = {
   education_level: '',
   field_of_study: '',
   institution: '',
-  certifications: '',
+  certifications: [{ name: '', file: null }],
   graduation_year: '',
   cgpa: '',
   experience_years: '',
@@ -73,6 +75,37 @@ const JobDetail = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCertChange = (index: number, field: 'name' | 'file', value: any) => {
+    const updated = [...form.certifications];
+    updated[index] = { ...updated[index], [field]: value };
+    setForm((prev) => ({ ...prev, certifications: updated }));
+  };
+
+  const addCert = () => {
+    setForm((prev) => ({ ...prev, certifications: [...prev.certifications, { name: '', file: null }] }));
+  };
+
+  const removeCert = (index: number) => {
+    setForm((prev) => ({ ...prev, certifications: prev.certifications.filter((_, i) => i !== index) }));
+  };
+
+  useEffect(() => {
+    let fp: flatpickr.Instance | null = null;
+    if (dateInputRef.current) {
+      fp = flatpickr(dateInputRef.current, {
+        dateFormat: "Y-m-d",
+        onChange: (_selectedDates, dateStr) => {
+          handleField('start_date', dateStr);
+        }
+      }) as flatpickr.Instance;
+    }
+    return () => {
+      if (fp) fp.destroy();
+    };
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -124,30 +157,57 @@ const JobDetail = () => {
 
     try {
       const formData = new FormData();
-      formData.append('full_name', form.full_name);
+      
+      // Split full name for backend
+      const nameParts = form.full_name.trim().split(' ');
+      const firstName = nameParts[0];
+      // If the user only typed one name, fallback to a placeholder so backend 'required' validation doesn't fail
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '-';
+      
+      formData.append('first_name', firstName);
+      formData.append('last_name', lastName);
       formData.append('email', form.email);
       formData.append('phone', form.phone);
-      formData.append('gender', form.gender);
-      formData.append('location', form.location);
-      formData.append('relocate', form.relocate);
-      formData.append('education_level', form.education_level);
-      formData.append('field_of_study', form.field_of_study);
-      formData.append('institution', form.institution);
-      formData.append('certifications', form.certifications);
-      formData.append('graduation_year', form.graduation_year);
-      formData.append('cgpa', form.cgpa);
-      formData.append('experience_years', form.experience_years);
-      formData.append('recent_employer', form.recent_employer);
-      formData.append('responsibilities', form.responsibilities);
-      formData.append('skills', form.skills);
-      formData.append('contract_type', form.contract_type);
-      formData.append('preferred_position', form.preferred_position);
-      formData.append('expected_salary', form.expected_salary);
-      formData.append('interest_reason', form.interest_reason);
-      formData.append('notice_period', form.notice_period);
-      formData.append('start_date', form.start_date);
-      formData.append('comments', form.comments);
-      if (resume) formData.append('resume', resume);
+      
+      // Map all extra questions into the answers array that the backend expects
+      const answers = {
+        gender: form.gender,
+        location: form.location,
+        relocate: form.relocate,
+        education_level: form.education_level,
+        field_of_study: form.field_of_study,
+        institution: form.institution,
+        certifications: JSON.stringify(form.certifications.map(c => c.name).filter(n => n.trim() !== '')),
+        graduation_year: form.graduation_year,
+        cgpa: form.cgpa,
+        experience_years: form.experience_years,
+        recent_employer: form.recent_employer,
+        responsibilities: form.responsibilities,
+        skills: form.skills,
+        contract_type: form.contract_type,
+        preferred_position: form.preferred_position,
+        expected_salary: form.expected_salary,
+        interest_reason: form.interest_reason,
+        notice_period: form.notice_period,
+        start_date: form.start_date,
+        comments: form.comments
+      };
+      
+      Object.entries(answers).forEach(([key, val]) => {
+        formData.append(`answers[${key}]`, val ? val.toString() : '');
+      });
+
+      form.certifications.forEach((cert) => {
+        if (cert.file) {
+          formData.append('cert_files[]', cert.file);
+        }
+      });
+
+      if (resume) {
+        formData.append('resume', resume);
+      } else {
+        throw new Error("Resume is required. Please attach your resume.");
+      }
 
       const res = await fetch(`${API_URL}/jobs/${id}/apply`, {
         method: 'POST',
@@ -157,6 +217,15 @@ const JobDetail = () => {
 
       if (!res.ok) {
         const err = await res.json();
+        
+        // Handle Laravel validation errors (where err is an object of arrays)
+        if (err && typeof err === 'object' && !err.message) {
+          const firstErrorKey = Object.keys(err)[0];
+          if (firstErrorKey && Array.isArray(err[firstErrorKey])) {
+            throw new Error(err[firstErrorKey][0]); // Display the first validation error string directly
+          }
+        }
+        
         throw new Error(err.message || 'Submission failed. Please try again.');
       }
 
@@ -560,17 +629,22 @@ const JobDetail = () => {
             {/* Application Form */}
             <div className="apply-section">
               {submitted ? (
-                <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <div className="apply-title" style={{ color: '#22c55e' }}>✓ Application Submitted!</div>
-                  <div className="apply-subtitle">
-                    Thank you for applying for the <strong>{job.title}</strong> role. We'll be in touch soon.
+                <div style={{ textAlign: 'center', padding: '60px 20px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', maxWidth: '600px', margin: '0 auto' }}>
+                  <div style={{ width: '64px', height: '64px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                    <svg style={{ width: '32px', height: '32px', color: '#16a34a' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
                   </div>
+                  <h3 style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', marginBottom: '12px' }}>Application Submitted Successfully</h3>
+                  <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, marginBottom: '32px' }}>
+                    Thank you for applying for the <strong>{job.title}</strong> position at Droga Group. Your application is now under review by our talent acquisition team. We will be in touch with you shortly regarding the next steps.
+                  </p>
                   <button
                     className="btn-submit"
-                    style={{ marginTop: 24 }}
+                    style={{ width: 'auto', padding: '0 32px' }}
                     onClick={() => navigate('/careers')}
                   >
-                    Back to Careers
+                    Return to Careers
                   </button>
                 </div>
               ) : (
@@ -728,17 +802,75 @@ const JobDetail = () => {
                       </div>
                     </div>
 
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Certifications / Licenses</label>
-                        <input
-                          className="form-input"
-                          type="text"
-                          placeholder="Certifications / Licenses"
-                          value={form.certifications}
-                          onChange={(e) => handleField('certifications', e.target.value)}
-                        />
+                    <div className="form-group" style={{ marginBottom: 16 }}>
+                      <label className="form-label">Certifications / Licenses</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {form.certifications.map((cert, index) => (
+                          <div key={index} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                            <input
+                              className="form-input"
+                              style={{ flex: 1 }}
+                              type="text"
+                              placeholder="e.g., Pharmacy Board License"
+                              value={cert.name}
+                              onChange={(e) => handleCertChange(index, 'name', e.target.value)}
+                            />
+                            <label 
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                padding: '10px 16px', height: '44px', borderRadius: 8, cursor: cert.name.trim() ? 'pointer' : 'not-allowed',
+                                background: cert.file ? '#dcfce7' : (cert.name.trim() ? '#f8fafc' : '#f1f5f9'),
+                                border: `1px solid ${cert.file ? '#bbf7d0' : '#e2e8f0'}`,
+                                color: cert.file ? '#16a34a' : (cert.name.trim() ? '#475569' : '#94a3b8'),
+                                fontWeight: 500, fontSize: 13, transition: 'all 0.2s',
+                                opacity: cert.name.trim() ? 1 : 0.6
+                              }}
+                            >
+                              {cert.file ? (
+                                <>
+                                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                  {cert.file.name.split('.').pop()?.toUpperCase()}
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                  Attach
+                                </>
+                              )}
+                              <input 
+                                type="file" 
+                                style={{ display: 'none' }} 
+                                disabled={!cert.name.trim()}
+                                accept=".pdf,.png,.jpg,.jpeg,.webp"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    handleCertChange(index, 'file', e.target.files[0]);
+                                  }
+                                }}
+                              />
+                            </label>
+                            {form.certifications.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeCert(index)}
+                                style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', background: '#fef2f2', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        ))}
                       </div>
+                      <button
+                        type="button"
+                        onClick={addCert}
+                        style={{ marginTop: 8, alignSelf: 'flex-start', background: 'none', border: 'none', color: '#0ea5e9', fontSize: 14, fontWeight: 500, cursor: 'pointer', padding: 0 }}
+                      >
+                        + Add another certification
+                      </button>
+                    </div>
+
+                    <div className="form-row">
                       <div className="form-group">
                         <label className="form-label">Graduation Year (Required)</label>
                         <input
@@ -749,18 +881,18 @@ const JobDetail = () => {
                           onChange={(e) => handleField('graduation_year', e.target.value)}
                         />
                       </div>
+                      <div className="form-group">
+                        <label className="form-label">CGPA (Required)</label>
+                        <input
+                          className="form-input"
+                          type="text"
+                          placeholder="e.g., 3.8"
+                          value={form.cgpa}
+                          onChange={(e) => handleField('cgpa', e.target.value)}
+                        />
+                      </div>
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label">CGPA (Required)</label>
-                      <input
-                        className="form-input"
-                        type="text"
-                        placeholder="e.g., 3.5"
-                        value={form.cgpa}
-                        onChange={(e) => handleField('cgpa', e.target.value)}
-                      />
-                    </div>
 
                     <hr className="form-divider" />
 
@@ -937,14 +1069,21 @@ const JobDetail = () => {
                           onChange={(e) => handleField('notice_period', e.target.value)}
                         />
                       </div>
-                      <div className="form-group">
+                      <div className="form-group relative">
                         <label className="form-label">Preferred Start Date</label>
                         <input
-                          className="form-input"
-                          type="date"
+                          ref={dateInputRef}
+                          className="form-input bg-white cursor-pointer pr-10"
+                          type="text"
+                          placeholder="Select preferred start date..."
                           value={form.start_date}
                           onChange={(e) => handleField('start_date', e.target.value)}
                         />
+                        <span className="absolute right-3 top-[34px] text-gray-400 pointer-events-none">
+                          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </span>
                       </div>
                     </div>
 

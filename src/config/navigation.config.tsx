@@ -114,13 +114,6 @@ export const SIDEBAR_NAV_CONFIG: NavItem[] = [
     roles: ["general Manager"],
   },
 
-  // ── User Profile ─────────────────────────────────────────────────────────
-  {
-    name: "User Profile",
-    icon: <UserCircleIcon />,
-    path: "/profile",
-    roles: ALL_ROLES,
-  },
 
   // ── Chat ─────────────────────────────────────────────────────────────────
   {

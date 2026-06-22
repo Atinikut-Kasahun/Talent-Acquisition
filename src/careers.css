@@ -634,10 +634,43 @@
   font-size: 14px; color: #222; cursor: pointer;
 }
 
-.careers-theme .radio-opt input[type=radio],
-.careers-theme .radio-opt input[type=checkbox] {
-  accent-color: var(--brand);
+.careers-theme .radio-opt input[type=radio] {
+  accent-color: #FCEE23;
   width: 16px; height: 16px; margin-top: 1px; flex-shrink: 0; cursor: pointer;
+}
+
+.careers-theme .radio-opt input[type=checkbox] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 0px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 1.5px solid #cbd5e1; /* Neutral Gray */
+  border-radius: 4px;
+  background-color: transparent;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.careers-theme .radio-opt input[type=checkbox]:checked {
+  background-color: #FCEE23;
+  border-color: #FCEE23;
+}
+
+.careers-theme .radio-opt input[type=checkbox]:checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+  /* Added a tiny shadow so the white check pops against the bright yellow */
+  filter: drop-shadow(0px 1px 1px rgba(0,0,0,0.15));
 }
 
 .careers-theme .privacy-note { font-size: 14px; color: #333; line-height: 1.6; }

@@ -32,11 +32,13 @@ class JobApplication extends Model implements HasMedia
         'reviewed_by',
         'reviewed_at',
         'notes',
+        'is_starred',
     ];
 
     protected $casts = [
         'answers' => 'array',
         'reviewed_at' => 'datetime',
+        'is_starred' => 'boolean',
     ];
 
     public function jobPosting(): BelongsTo

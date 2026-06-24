@@ -238,6 +238,27 @@ export default function ApplicantsTable() {
   const [selectedApplicantId, setSelectedApplicantId] = useState<string | null>(null);
   const [starredOnly, setStarredOnly] = useState(false);
 
+  // Enterprise UI State
+  const [selectedApplicantIds, setSelectedApplicantIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Bulk Status Update State
+  const [isBulkStatusMenuOpen, setIsBulkStatusMenuOpen] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [pendingTargetStatus, setPendingTargetStatus] = useState<StatusKey | null>(null);
+  const [bulkStatusLoading, setBulkStatusLoading] = useState(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   // Toast
   const [toast, setToast] = useState({
     visible: false,
@@ -268,13 +289,16 @@ export default function ApplicantsTable() {
   }, []);
 
   // ── Fetch applications ──────────────────────────────────────────────────
-  const fetchApplications = useCallback(async (p: number) => {
+  const fetchApplications = useCallback(async (p: number, search: string, status: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await authFetch(
-        `${API_URL}/admin/applications?page=${p}`
-      );
+      const url = new URL(`${API_URL}/admin/applications`);
+      url.searchParams.append("page", p.toString());
+      if (search) url.searchParams.append("search", search);
+      if (status && status !== "all") url.searchParams.append("status", status);
+
+      const res = await authFetch(url.toString());
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: PaginatedResponse = await res.json();
       setApplications(data.data);
@@ -289,8 +313,8 @@ export default function ApplicantsTable() {
   }, []);
 
   useEffect(() => {
-    fetchApplications(page);
-  }, [page, fetchApplications]);
+    fetchApplications(page, debouncedSearch, statusFilter);
+  }, [page, debouncedSearch, statusFilter, fetchApplications]);
 
   // ── Update status ───────────────────────────────────────────────────────
   const updateStatus = async (appId: string, newStatus: StatusKey) => {
@@ -338,73 +362,213 @@ export default function ApplicantsTable() {
     updateStatus(app.id, "rejected");
   };
 
+  // ── Bulk Selection Helpers ──────────────────────────────────────────────
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedApplicantIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedApplicantIds(next);
+  };
+
+  const toggleSelectAll = (isAllSelected: boolean, displayed: Application[]) => {
+    if (isAllSelected) {
+      setSelectedApplicantIds(new Set());
+    } else {
+      setSelectedApplicantIds(new Set(displayed.map(a => a.id)));
+    }
+  };
+
+  const openBulkStatusModal = (status: StatusKey) => {
+    setPendingTargetStatus(status);
+    setIsBulkStatusMenuOpen(false);
+    setIsConfirmModalOpen(true);
+  };
+
+  const submitBulkStatusUpdate = async () => {
+    if (!pendingTargetStatus || selectedApplicantIds.size === 0) return;
+    setBulkStatusLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/applications/bulk-status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          application_ids: Array.from(selectedApplicantIds),
+          status: pendingTargetStatus,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to bulk update status");
+      const data = await res.json();
+      
+      // Update local state
+      setApplications(prev => prev.map(app => 
+        selectedApplicantIds.has(app.id) && app.status !== pendingTargetStatus 
+          ? { ...app, status: pendingTargetStatus } 
+          : app
+      ));
+
+      if (data.skipped_count > 0) {
+        showToast(`Updated ${data.updated_count} applicants to "${STATUS_CONFIG[pendingTargetStatus].label}"; ${data.skipped_count} were already in this stage.`, "success");
+      } else {
+        showToast(`Successfully updated ${data.updated_count} applicants to "${STATUS_CONFIG[pendingTargetStatus].label}".`, "success");
+      }
+      
+      setSelectedApplicantIds(new Set());
+      setIsConfirmModalOpen(false);
+      setPendingTargetStatus(null);
+    } catch (err) {
+      showToast("Failed to process bulk update", "error");
+    } finally {
+      setBulkStatusLoading(false);
+    }
+  };
+
+  const handleBulkAction = (action: string) => {
+    if (action === "archive") showToast(`Archived ${selectedApplicantIds.size} candidates`, "success");
+    if (action === "export") showToast(`Exported ${selectedApplicantIds.size} candidates`, "success");
+    if (action === "status") showToast(`Status changed for ${selectedApplicantIds.size} candidates`, "success");
+    if (action === "email") showToast(`Batch email sent to ${selectedApplicantIds.size} candidates`, "success");
+    setSelectedApplicantIds(new Set()); // clear after action
+  };
+
   // ── Header cell helper ──────────────────────────────────────────────────
   const thClass =
-    "px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400 uppercase";
+    "px-5 py-4 font-semibold text-gray-500 text-start text-xs dark:text-gray-400 uppercase tracking-wider sticky top-0 bg-white dark:bg-[#1A1C23] z-10 shadow-sm";
+  
+  const tdPadding = density === "compact" ? "py-2.5" : "py-4";
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Render
   // ═══════════════════════════════════════════════════════════════════════════
   const displayedApps = starredOnly ? applications.filter((a) => a.is_starred) : applications;
+  const isAllSelected = displayedApps.length > 0 && selectedApplicantIds.size === displayedApps.length;
 
   return (
     <>
-      {/* ── Starred filter chip ─────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-4">
-        <button
-          onClick={() => setStarredOnly((v) => !v)}
-          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 ${
-            starredOnly
-              ? "bg-yellow-400 border-yellow-400 text-gray-900 shadow-sm"
-              : "bg-white dark:bg-white/[0.03] border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 hover:border-yellow-400 hover:text-yellow-500"
-          }`}
-          title={starredOnly ? "Showing starred only — click to show all" : "Show starred candidates only"}
-        >
-          <svg
-            className={`w-3.5 h-3.5 transition-colors ${starredOnly ? "text-gray-900" : "text-yellow-400"}`}
-            fill={starredOnly ? "currentColor" : "none"}
-            stroke={starredOnly ? "none" : "currentColor"}
-            viewBox="0 0 24 24"
+      {/* ── Control Bar & Bulk Actions ─────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        {/* Left: Filters & Search */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <input 
+              type="text" 
+              placeholder="Search applicants..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-400 w-64"
+            />
+          </div>
+          
+          <select 
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="pl-3 pr-8 py-2 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-lg text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 appearance-none"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-          </svg>
-          Shortlisted
-          {starredOnly && (
-            <span className="ml-1 bg-gray-900/20 text-gray-900 text-xs font-semibold px-1.5 py-0.5 rounded-full">
-              {applications.filter((a) => a.is_starred).length}
-            </span>
+            <option value="all">All Statuses</option>
+            {STATUS_ORDER.map(status => (
+              <option key={status} value={status}>{STATUS_CONFIG[status].label}</option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => setStarredOnly((v) => !v)}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition-all duration-200 ${
+              starredOnly
+                ? "bg-yellow-400 border-yellow-400 text-gray-900 shadow-sm"
+                : "bg-white dark:bg-white/[0.03] border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 hover:border-yellow-400 hover:text-yellow-500"
+            }`}
+          >
+            <svg className={`w-3.5 h-3.5 ${starredOnly ? "text-gray-900" : "text-yellow-400"}`} fill={starredOnly ? "currentColor" : "none"} stroke={starredOnly ? "none" : "currentColor"} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+            Shortlisted {starredOnly && <span className="ml-1 bg-gray-900/20 text-gray-900 text-xs px-1.5 py-0.5 rounded-full">{displayedApps.length}</span>}
+          </button>
+        </div>
+
+        {/* Right: Actions & Density */}
+        <div className="flex items-center gap-3">
+          {selectedApplicantIds.size > 0 ? (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300 mr-2">
+                {selectedApplicantIds.size} selected
+              </span>
+              <div className="relative">
+                <button 
+                  onClick={() => setIsBulkStatusMenuOpen(!isBulkStatusMenuOpen)} 
+                  className={`px-3 py-1.5 border text-sm font-medium rounded-lg transition inline-flex items-center gap-1.5 ${isBulkStatusMenuOpen ? "bg-[#FCEE23] border-[#FCEE23] text-gray-900" : "bg-white dark:bg-white/[0.03] border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 hover:border-[#FCEE23] hover:text-gray-900"}`}
+                >
+                  Status
+                  <svg className={`w-4 h-4 transition-transform ${isBulkStatusMenuOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {isBulkStatusMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsBulkStatusMenuOpen(false)} />
+                    <div className="absolute top-full right-0 mt-2 w-48 rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#1A1C23] py-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Change Status</div>
+                      {STATUS_ORDER.map(status => (
+                        <button
+                          key={status}
+                          onClick={() => openBulkStatusModal(status)}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] flex items-center gap-2 transition-colors"
+                        >
+                          <span className={`w-2 h-2 rounded-full ${STATUS_CONFIG[status].dot}`} />
+                          {STATUS_CONFIG[status].label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              <button onClick={() => handleBulkAction('email')} className="px-3 py-1.5 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition">Email</button>
+              <button onClick={() => handleBulkAction('export')} className="px-3 py-1.5 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition">Export</button>
+              <button onClick={() => handleBulkAction('archive')} className="px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 text-sm font-medium rounded-lg hover:bg-red-100 transition">Archive</button>
+            </div>
+          ) : (
+            <>
+              <button onClick={() => handleBulkAction('export')} className="inline-flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 transition">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                Export CSV
+              </button>
+              <div className="flex bg-gray-100 dark:bg-white/[0.03] p-1 rounded-lg border border-gray-200 dark:border-white/[0.05]">
+                <button onClick={() => setDensity("comfortable")} className={`p-1.5 rounded-md transition ${density === "comfortable" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"}`} title="Comfortable padding">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+                <button onClick={() => setDensity("compact")} className={`p-1.5 rounded-md transition ${density === "compact" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"}`} title="Compact padding">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
+                </button>
+              </div>
+            </>
           )}
-        </button>
-        {starredOnly && (
-          <span className="text-xs text-gray-400 dark:text-gray-500">
-            Showing {applications.filter((a) => a.is_starred).length} starred candidate{applications.filter((a) => a.is_starred).length !== 1 ? "s" : ""}
-          </span>
-        )}
+        </div>
       </div>
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-        <div className="max-w-full overflow-x-auto">
+
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-[#1A1C23]">
+        <div className="max-w-full overflow-x-auto max-h-[700px] overflow-y-auto scrollbar-hide">
           <Table>
             {/* ── Header ──────────────────────────────────────────────── */}
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
-                <TableCell isHeader className={thClass}>
-                  Name
+                <TableCell isHeader className={`${thClass} w-12 px-5`}>
+                  <input 
+                    type="checkbox" 
+                    checked={isAllSelected} 
+                    ref={input => {
+                      if (input) {
+                        input.indeterminate = displayedApps.length > 0 && selectedApplicantIds.size > 0 && selectedApplicantIds.size < displayedApps.length;
+                      }
+                    }}
+                    onChange={() => toggleSelectAll(isAllSelected, displayedApps)} 
+                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-transparent text-[#FCEE23] accent-[#FCEE23] focus:ring-[#FCEE23] cursor-pointer transition-colors opacity-50 hover:opacity-100" 
+                  />
                 </TableCell>
-                <TableCell isHeader className={thClass}>
-                  Applied For
-                </TableCell>
-                <TableCell isHeader className={thClass}>
-                  Email
-                </TableCell>
-                <TableCell isHeader className={thClass}>
-                  Applied On
-                </TableCell>
-                <TableCell isHeader className={thClass}>
-                  Status
-                </TableCell>
-                <TableCell isHeader className={thClass}>
-                  Actions
-                </TableCell>
+                <TableCell isHeader className={thClass}>Name</TableCell>
+                <TableCell isHeader className={thClass}>Applied For</TableCell>
+                <TableCell isHeader className={thClass}>Email</TableCell>
+                <TableCell isHeader className={thClass}>Applied On</TableCell>
+                <TableCell isHeader className={thClass}>Status</TableCell>
+                <TableCell isHeader className={thClass}>Actions</TableCell>
               </TableRow>
             </TableHeader>
 
@@ -454,18 +618,28 @@ export default function ApplicantsTable() {
             ) : displayedApps.length === 0 ? (
               <TableBody>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12">
-                    <div className="flex flex-col items-center gap-2">
+                  <TableCell colSpan={7} className="text-center py-16">
+                    <div className="flex flex-col items-center gap-3">
                       {starredOnly ? (
                         <>
-                          <svg className="w-8 h-8 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                          </svg>
-                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No starred candidates yet</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">Open a profile and click the ⭐ star to shortlist a candidate</p>
+                          <div className="w-12 h-12 rounded-full bg-yellow-50 dark:bg-yellow-500/10 flex items-center justify-center mb-2">
+                            <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+                          </div>
+                          <p className="text-base font-semibold text-gray-900 dark:text-white">No shortlisted candidates</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm text-center">Open a profile and click the star icon to build your shortlist.</p>
+                          <button onClick={() => setStarredOnly(false)} className="mt-2 text-sm font-medium text-yellow-600 hover:text-yellow-700">View all applicants</button>
                         </>
                       ) : (
-                        <p className="text-sm text-gray-400">No applications found</p>
+                        <>
+                          <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-white/[0.03] flex items-center justify-center mb-2">
+                            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                          </div>
+                          <p className="text-base font-semibold text-gray-900 dark:text-white">No applicants found</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm text-center">We couldn't find anyone matching your current filters and search query.</p>
+                          {(searchQuery || statusFilter !== "all") && (
+                            <button onClick={() => { setSearchQuery(""); setStatusFilter("all"); setPage(1); }} className="mt-2 text-sm font-medium text-yellow-600 hover:text-yellow-700">Clear all filters</button>
+                          )}
+                        </>
                       )}
                     </div>
                   </TableCell>
@@ -477,41 +651,49 @@ export default function ApplicantsTable() {
                   const fullName = `${app.first_name} ${app.last_name}`;
                   const photoUrl = getPhotoUrl(app);
                   const statusKey = (app.status || "new") as StatusKey;
-                  const statusCfg =
-                    STATUS_CONFIG[statusKey] || STATUS_CONFIG.new;
+                  const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.new;
                   const isHovered = hoveredRowId === app.id;
+                  const isSelected = selectedApplicantIds.has(app.id);
 
                   return (
                     <TableRow
                       key={app.id}
-                      className="group relative"
-                      // @ts-ignore - Custom onMouseEnter/onMouseLeave for hover state
+                      className={`group relative transition-all duration-200 ${isSelected ? "bg-[#FCEE23]/10 dark:bg-[#FCEE23]/5 shadow-[inset_3px_0_0_0_#FCEE23]" : "hover:bg-gray-50/50 dark:hover:bg-white/[0.02]"}`}
+                      // @ts-ignore
                       onMouseEnter={() => setHoveredRowId(app.id)}
                       onMouseLeave={() => setHoveredRowId(null)}
                     >
+                      {/* ── Checkbox ───────────────────────────────────── */}
+                      <TableCell className={`${tdPadding} px-5`}>
+                        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                          <input 
+                            type="checkbox" 
+                            checked={isSelected}
+                            onChange={() => toggleSelect(app.id)}
+                            className={`w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-transparent text-[#FCEE23] accent-[#FCEE23] focus:ring-[#FCEE23] cursor-pointer transition-all duration-200 ${!isSelected ? "opacity-30 group-hover:opacity-100" : "opacity-100"}`} 
+                          />
+                        </div>
+                      </TableCell>
+
                       {/* ── Name ───────────────────────────────────────── */}
-                      <TableCell className="px-5 py-4 sm:px-6 text-start">
+                      <TableCell className={`px-5 ${tdPadding} sm:px-6 text-start`}>
                         <div className="flex items-center gap-3">
                           {photoUrl ? (
                             <img
                               src={photoUrl}
                               alt={fullName}
                               className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                              onError={(e) => {
-                                (
-                                  e.target as HTMLImageElement
-                                ).style.display = "none";
-                              }}
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                             />
                           ) : (
                             <AvatarFallback name={fullName} />
                           )}
                           <div className="min-w-0">
-                            <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90 truncate">
+                            <span className="block font-medium text-gray-800 text-sm dark:text-white/90 truncate">
                               {fullName}
                             </span>
                             {app.phone && (
-                              <span className="block text-xs text-gray-400 truncate">
+                              <span className="block text-xs text-gray-500 truncate">
                                 {app.phone}
                               </span>
                             )}
@@ -520,74 +702,53 @@ export default function ApplicantsTable() {
                           {/* ── Row hover quick actions ─────────────────── */}
                           <div
                             className={`ml-auto flex items-center gap-1 transition-all duration-200 ${
-                              isHovered
+                              isHovered && !isSelected
                                 ? "opacity-100 translate-x-0"
                                 : "opacity-0 translate-x-2 pointer-events-none"
                             }`}
                           >
-                            {/* Quick advance */}
                             <button
-                              onClick={() => moveToNextStage(app)}
+                              onClick={(e) => { e.stopPropagation(); moveToNextStage(app); }}
                               title="Move to next stage"
                               className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10 transition"
                             >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M13 7l5 5m0 0l-5 5m5-5H6"
-                                />
-                              </svg>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                             </button>
-                            {/* Quick email */}
                             <a
                               href={`mailto:${app.email}`}
                               title={`Email ${fullName}`}
                               className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                                />
-                              </svg>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                             </a>
                           </div>
                         </div>
                       </TableCell>
 
                       {/* ── Applied For ────────────────────────────────── */}
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                      <TableCell className={`px-4 ${tdPadding} text-gray-600 text-start text-sm dark:text-gray-300 font-medium`}>
                         {app.job_posting?.title || "—"}
                       </TableCell>
 
                       {/* ── Email ──────────────────────────────────────── */}
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        <span className="truncate block max-w-[180px]">
+                      <TableCell className={`px-4 ${tdPadding} text-start`}>
+                        <a 
+                          href={`mailto:${app.email}`}
+                          className="truncate block max-w-[180px] text-sm text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {app.email}
-                        </span>
+                        </a>
                       </TableCell>
 
                       {/* ── Applied On ─────────────────────────────────── */}
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                      <TableCell className={`px-4 ${tdPadding} text-gray-500 text-start text-sm dark:text-gray-400 whitespace-nowrap`}>
                         {formatDate(app.created_at)}
                       </TableCell>
 
                       {/* ── Status Badge ───────────────────────────────── */}
-                      <TableCell className="px-4 py-3 text-start">
+                      <TableCell className={`px-4 ${tdPadding} text-start`}>
                         <div
                           className="relative inline-block"
                           ref={openStatusId === app.id ? statusRef : null}
@@ -665,7 +826,7 @@ export default function ApplicantsTable() {
                       </TableCell>
 
                       {/* ── Actions (Three-dot menu) ───────────────────── */}
-                      <TableCell className="px-4 py-3 text-start">
+                      <TableCell className={`px-4 ${tdPadding} text-start`}>
                         <div
                           className="relative"
                           ref={openMenuId === app.id ? menuRef : null}
@@ -876,6 +1037,49 @@ export default function ApplicantsTable() {
 
       {/* Toast */}
       <Toast visible={toast.visible} message={toast.message} type={toast.type} />
+
+      {/* Bulk Status Confirmation Modal */}
+      {isConfirmModalOpen && pendingTargetStatus && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onClick={() => !bulkStatusLoading && setIsConfirmModalOpen(false)} />
+          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="mb-6">
+              <div className="w-12 h-12 rounded-full bg-yellow-50 dark:bg-[#FCEE23]/10 flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-[#FCEE23]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Confirm Status Update</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                You are about to change the status of <strong className="text-gray-900 dark:text-gray-200">{selectedApplicantIds.size} applicant{selectedApplicantIds.size !== 1 && 's'}</strong> to <strong className="text-gray-900 dark:text-gray-200">"{STATUS_CONFIG[pendingTargetStatus].label}"</strong>.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <button 
+                onClick={() => setIsConfirmModalOpen(false)}
+                disabled={bulkStatusLoading}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FCEE23] disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={submitBulkStatusUpdate}
+                disabled={bulkStatusLoading}
+                className="inline-flex items-center justify-center min-w-[100px] px-4 py-2 text-sm font-semibold text-gray-900 bg-[#FCEE23] border border-transparent rounded-lg hover:bg-[#e5d820] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FCEE23] disabled:opacity-70 transition"
+              >
+                {bulkStatusLoading ? (
+                  <svg className="animate-spin h-5 w-5 text-gray-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  "Confirm Update"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

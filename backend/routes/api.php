@@ -42,6 +42,7 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::group(['middleware' => 'role:superadmin,admin,hr,viewer,managing director,HR manager'], function () {
         Route::get('admin/applications', [ApplicationController::class, 'index']);
         Route::get('admin/applications/{id}', [ApplicationController::class, 'show']);
+        Route::put('admin/applications/bulk-status', [ApplicationController::class, 'bulkUpdateStatus']);
         Route::put('admin/applications/{id}/status', [ApplicationController::class, 'updateStatus']);
         Route::post('admin/applications/{id}/notes', [ApplicationController::class, 'updateNotes']);
         Route::patch('admin/applications/{id}/star', [ApplicationController::class, 'toggleStar']);

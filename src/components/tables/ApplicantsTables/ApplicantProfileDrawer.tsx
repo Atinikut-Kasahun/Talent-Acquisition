@@ -427,7 +427,7 @@ export default function ApplicantProfileDrawer({ applicationId, onClose, onStatu
             ═══════════════════════════════════════════════════════════════ */}
             <div className="flex flex-1 overflow-hidden">
               {/* ── Left sidebar: metadata ─────────────────────────────── */}
-              <aside className="w-64 flex-shrink-0 border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto bg-gray-50/60 dark:bg-white/[0.015] p-5 space-y-5">
+              <aside className="w-64 flex-shrink-0 border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto bg-gray-50/60 dark:bg-white/[0.015] p-5 space-y-5 scrollbar-hide">
 
                 {/* Contact */}
                 <section>
@@ -515,7 +515,7 @@ export default function ApplicantProfileDrawer({ applicationId, onClose, onStatu
               </aside>
 
               {/* ── Main content area ──────────────────────────────────── */}
-              <main className="flex-1 overflow-y-auto p-6">
+              <main className={`flex-1 p-6 scrollbar-hide ${activeTab === "documents" ? "overflow-hidden flex flex-col min-h-0" : "overflow-y-auto"}`}>
 
                 {/* ── OVERVIEW TAB ─────────────────────────────────────── */}
                 {activeTab === "overview" && (
@@ -579,7 +579,7 @@ export default function ApplicantProfileDrawer({ applicationId, onClose, onStatu
 
                 {/* ── DOCUMENTS TAB ────────────────────────────────────── */}
                 {activeTab === "documents" && (
-                  <div className="h-full flex flex-col gap-4">
+                  <div className="flex-1 min-h-0 flex flex-col gap-4">
                     {/* Tab selector: Resume vs Certifications */}
                     <div className="flex gap-2 flex-wrap">
                       {app.resume_url && (
@@ -630,7 +630,7 @@ export default function ApplicantProfileDrawer({ applicationId, onClose, onStatu
                       const isPdf = viewUrl.toLowerCase().includes(".pdf") || (certData?.mime_type || "").includes("pdf");
 
                       return (
-                        <div className="flex-1 flex flex-col min-h-0 rounded-xl border border-gray-100 dark:border-white/[0.06] overflow-hidden bg-gray-50 dark:bg-white/[0.02]">
+                        <div className="doc-preview-container flex-1 flex flex-col min-h-0 rounded-xl border border-gray-100 dark:border-white/[0.06] overflow-hidden bg-gray-50 dark:bg-white/[0.02]">
                           {/* Toolbar */}
                           <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-white/[0.06] bg-white dark:bg-gray-800">
                             <span className="text-xs font-medium text-gray-600 dark:text-gray-300 truncate">
@@ -648,17 +648,23 @@ export default function ApplicantProfileDrawer({ applicationId, onClose, onStatu
                               Download
                             </a>
                           </div>
-                          {/* Preview */}
-                          <div className="flex-1 overflow-auto">
+                          {/* Preview — overflow-hidden container, absolutely-positioned content, zero scrollbars */}
+                          <div className="relative flex-1 min-h-0 overflow-hidden">
                             {isPdf ? (
                               <iframe
-                                src={viewUrl}
-                                className="w-full h-full min-h-[500px] border-0"
+                                src={`${viewUrl}#toolbar=0&scrollbar=0&navpanes=0&view=FitH`}
+                                className="absolute inset-0 w-full h-full border-0"
                                 title="Document Preview"
+                                scrolling="no"
                               />
                             ) : (
-                              <div className="flex items-center justify-center p-6 h-full">
-                                <img src={viewUrl} alt="Document" className="max-w-full max-h-[600px] object-contain rounded-lg shadow" />
+                              /* Image: overflow-hidden + object-contain = scales to fit, no scrollbars ever */
+                              <div className="absolute inset-0 flex items-center justify-center p-4 bg-gray-50 dark:bg-white/[0.02] overflow-hidden">
+                                <img
+                                  src={viewUrl}
+                                  alt="Document"
+                                  className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-md"
+                                />
                               </div>
                             )}
                           </div>

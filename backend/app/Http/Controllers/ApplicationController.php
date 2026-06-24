@@ -27,6 +27,15 @@ class ApplicationController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'ilike', '%' . $search . '%')
+                  ->orWhere('last_name', 'ilike', '%' . $search . '%')
+                  ->orWhere('email', 'ilike', '%' . $search . '%');
+            });
+        }
+
         return response()->json($query->paginate(20));
     }
 
@@ -154,6 +163,53 @@ class ApplicationController extends Controller
     }
 
     
+    public function bulkUpdateStatus(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'application_ids' => 'required|array',
+            'application_ids.*' => 'integer|exists:job_applications,id',
+            'status' => 'required|string|in:new,reviewing,shortlisted,interviewed,offered,rejected,withdrawn',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $user = Auth::guard('api')->user();
+        $applications = JobApplication::whereIn('id', $request->application_ids)->get();
+
+        $updatedCount = 0;
+        $skippedCount = 0;
+        $newStatus = $request->status;
+
+        foreach ($applications as $application) {
+            if ($application->status === $newStatus) {
+                $skippedCount++;
+            } else {
+                $oldStatus = $application->status;
+                $application->update([
+                    'status' => $newStatus,
+                    'reviewed_by' => $user->id,
+                    'reviewed_at' => now(),
+                ]);
+                $updatedCount++;
+
+                activity()
+                    ->performedOn($application)
+                    ->causedBy($user)
+                    ->withProperties(['old_status' => $oldStatus, 'new_status' => $newStatus, 'bulk' => true])
+                    ->log('Bulk updated application status to ' . $newStatus . ' for: ' . $application->first_name . ' ' . $application->last_name);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Bulk update processed',
+            'updated_count' => $updatedCount,
+            'skipped_count' => $skippedCount,
+            'target_status' => $newStatus
+        ]);
+    }
+
     public function updateStatus(Request $request, $id)
     {
         $application = JobApplication::findOrFail($id);

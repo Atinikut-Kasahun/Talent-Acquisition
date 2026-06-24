@@ -234,6 +234,46 @@ layer(base);
   background-color: rgba(255, 255, 255, 0.22);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   SCROLLBAR-HIDE — completely invisible scrollbar utility
+   Applied to premium document viewer panels in the drawer.
+   Content still scrolls via touch/trackpad/keyboard.
+   ══════════════════════════════════════════════════════════════ */
+@utility scrollbar-hide {
+  /* Firefox */
+  scrollbar-width: none;
+  /* IE / Edge legacy */
+  -ms-overflow-style: none;
+}
+
+/* WebKit (Chrome, Edge, Safari) — must be outside @utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DOC-PREVIEW-CONTAINER — nuclear option for document viewer
+   Kills scrollbars on the container AND every element inside it.
+   Covers Chrome/Edge/Safari (WebKit) + Firefox + IE/Edge legacy.
+   ══════════════════════════════════════════════════════════════ */
+.doc-preview-container,
+.doc-preview-container * {
+  /* Firefox */
+  scrollbar-width: none !important;
+  /* IE / Edge legacy */
+  -ms-overflow-style: none !important;
+}
+
+/* WebKit — Chrome, Edge, Safari */
+.doc-preview-container::-webkit-scrollbar,
+.doc-preview-container *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 @utility menu-item {
   @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-theme-sm;
 }

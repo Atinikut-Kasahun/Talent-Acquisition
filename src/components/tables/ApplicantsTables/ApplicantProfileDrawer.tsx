@@ -32,19 +32,21 @@ export interface DrawerApplication {
   media?: { collection_name: string; original_url: string }[];
 }
 
-type StatusKey = "new" | "reviewing" | "shortlisted" | "interviewed" | "offered" | "rejected" | "withdrawn";
+type StatusKey = "new" | "reviewing" | "shortlisted" | "written_exam" | "technical_exam" | "interviewed" | "offered" | "rejected" | "withdrawn";
 
 const STATUS_CONFIG: Record<StatusKey, { label: string; bg: string; text: string; dot: string; ring: string }> = {
-  new:         { label: "New",         bg: "bg-blue-50   dark:bg-blue-500/10",   text: "text-blue-600   dark:text-blue-400",   dot: "bg-blue-500",   ring: "ring-blue-200"   },
-  reviewing:   { label: "Reviewing",   bg: "bg-purple-50 dark:bg-purple-500/10", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-500", ring: "ring-purple-200" },
-  shortlisted: { label: "Shortlisted", bg: "bg-amber-50  dark:bg-amber-500/10",  text: "text-amber-600  dark:text-amber-400",  dot: "bg-amber-500",  ring: "ring-amber-200"  },
-  interviewed: { label: "Interviewed", bg: "bg-cyan-50   dark:bg-cyan-500/10",   text: "text-cyan-600   dark:text-cyan-400",   dot: "bg-cyan-500",   ring: "ring-cyan-200"   },
-  offered:     { label: "Offered",     bg: "bg-green-50  dark:bg-green-500/10",  text: "text-green-600  dark:text-green-400",  dot: "bg-green-500",  ring: "ring-green-200"  },
-  rejected:    { label: "Rejected",    bg: "bg-red-50    dark:bg-red-500/10",    text: "text-red-500    dark:text-red-400",    dot: "bg-red-500",    ring: "ring-red-200"    },
-  withdrawn:   { label: "Withdrawn",   bg: "bg-gray-100  dark:bg-gray-700/40",   text: "text-gray-500   dark:text-gray-400",   dot: "bg-gray-400",   ring: "ring-gray-200"   },
+  new:           { label: "New",           bg: "bg-blue-50   dark:bg-blue-500/10",   text: "text-blue-600   dark:text-blue-400",   dot: "bg-blue-500",   ring: "ring-blue-200"   },
+  reviewing:     { label: "Reviewing",     bg: "bg-purple-50 dark:bg-purple-500/10", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-500", ring: "ring-purple-200" },
+  shortlisted:   { label: "Shortlisted",   bg: "bg-amber-50  dark:bg-amber-500/10",  text: "text-amber-600  dark:text-amber-400",  dot: "bg-amber-500",  ring: "ring-amber-200"  },
+  written_exam:  { label: "Written Exam",  bg: "bg-indigo-50 dark:bg-indigo-500/10", text: "text-indigo-600 dark:text-indigo-400", dot: "bg-indigo-500", ring: "ring-indigo-200" },
+  technical_exam:{ label: "Technical Exam",bg: "bg-teal-50   dark:bg-teal-500/10",   text: "text-teal-600   dark:text-teal-400",   dot: "bg-teal-500",   ring: "ring-teal-200"   },
+  interviewed:   { label: "Interviewed",   bg: "bg-cyan-50   dark:bg-cyan-500/10",   text: "text-cyan-600   dark:text-cyan-400",   dot: "bg-cyan-500",   ring: "ring-cyan-200"   },
+  offered:       { label: "Offered",       bg: "bg-green-50  dark:bg-green-500/10",  text: "text-green-600  dark:text-green-400",  dot: "bg-green-500",  ring: "ring-green-200"  },
+  rejected:      { label: "Rejected",      bg: "bg-red-50    dark:bg-red-500/10",    text: "text-red-500    dark:text-red-400",    dot: "bg-red-500",    ring: "ring-red-200"    },
+  withdrawn:     { label: "Withdrawn",     bg: "bg-gray-100  dark:bg-gray-700/40",   text: "text-gray-500   dark:text-gray-400",   dot: "bg-gray-400",   ring: "ring-gray-200"   },
 };
 
-const STATUS_ORDER: StatusKey[] = ["new", "reviewing", "shortlisted", "interviewed", "offered", "rejected", "withdrawn"];
+const STATUS_ORDER: StatusKey[] = ["new", "reviewing", "shortlisted", "written_exam", "technical_exam", "interviewed", "offered", "rejected", "withdrawn"];
 
 function getNextStatus(current: string): StatusKey | null {
   const idx = STATUS_ORDER.indexOf(current as StatusKey);
@@ -495,9 +497,9 @@ export default function ApplicantProfileDrawer({ applicationId, onClose, onStatu
                 <section>
                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Pipeline Stage</h4>
                   <div className="flex flex-col gap-1.5">
-                    {(["new","reviewing","shortlisted","interviewed","offered"] as StatusKey[]).map((sk, i) => {
+                    {STATUS_ORDER.slice(0, 7).map((sk) => {
                       const cfg = STATUS_CONFIG[sk];
-                      const isDone = STATUS_ORDER.indexOf(statusKey) >= i;
+                      const isDone = STATUS_ORDER.indexOf(statusKey) >= STATUS_ORDER.indexOf(sk);
                       const isCurrent = statusKey === sk;
                       return (
                         <div key={sk} className="flex items-center gap-2">

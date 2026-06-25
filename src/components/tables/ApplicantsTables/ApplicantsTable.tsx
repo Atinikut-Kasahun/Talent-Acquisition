@@ -50,6 +50,8 @@ type StatusKey =
   | "new"
   | "reviewing"
   | "shortlisted"
+  | "written_exam"
+  | "technical_exam"
   | "interviewed"
   | "offered"
   | "rejected"
@@ -76,6 +78,18 @@ const STATUS_CONFIG: Record<
     bg: "bg-amber-50 dark:bg-amber-500/10",
     text: "text-amber-600 dark:text-amber-400",
     dot: "bg-amber-500",
+  },
+  written_exam: {
+    label: "Written Exam",
+    bg: "bg-indigo-50 dark:bg-indigo-500/10",
+    text: "text-indigo-600 dark:text-indigo-400",
+    dot: "bg-indigo-500",
+  },
+  technical_exam: {
+    label: "Technical Exam",
+    bg: "bg-teal-50 dark:bg-teal-500/10",
+    text: "text-teal-600 dark:text-teal-400",
+    dot: "bg-teal-500",
   },
   interviewed: {
     label: "Interviewed",
@@ -107,6 +121,8 @@ const STATUS_ORDER: StatusKey[] = [
   "new",
   "reviewing",
   "shortlisted",
+  "written_exam",
+  "technical_exam",
   "interviewed",
   "offered",
   "rejected",
@@ -244,12 +260,24 @@ export default function ApplicantsTable() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"active" | "archived">("active");
+
+  // Status filter popover
+  const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
+  const [statusFilterSearch, setStatusFilterSearch] = useState("");
+  const statusFilterRef = useRef<HTMLDivElement>(null);
 
   // Bulk Status Update State
   const [isBulkStatusMenuOpen, setIsBulkStatusMenuOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [pendingTargetStatus, setPendingTargetStatus] = useState<StatusKey | null>(null);
   const [bulkStatusLoading, setBulkStatusLoading] = useState(false);
+
+  // Delete Modal State
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteInput, setDeleteInput] = useState("");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | "bulk" | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -283,13 +311,16 @@ export default function ApplicantsTable() {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpenMenuId(null);
       }
+      if (statusFilterRef.current && !statusFilterRef.current.contains(e.target as Node)) {
+        setIsStatusFilterOpen(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   // ── Fetch applications ──────────────────────────────────────────────────
-  const fetchApplications = useCallback(async (p: number, search: string, status: string) => {
+  const fetchApplications = useCallback(async (p: number, search: string, status: string, isArchived: boolean) => {
     setLoading(true);
     setError(null);
     try {
@@ -297,6 +328,7 @@ export default function ApplicantsTable() {
       url.searchParams.append("page", p.toString());
       if (search) url.searchParams.append("search", search);
       if (status && status !== "all") url.searchParams.append("status", status);
+      url.searchParams.append("is_archived", isArchived ? "1" : "0");
 
       const res = await authFetch(url.toString());
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -313,8 +345,8 @@ export default function ApplicantsTable() {
   }, []);
 
   useEffect(() => {
-    fetchApplications(page, debouncedSearch, statusFilter);
-  }, [page, debouncedSearch, statusFilter, fetchApplications]);
+    fetchApplications(page, debouncedSearch, statusFilter, viewMode === "archived");
+  }, [page, debouncedSearch, statusFilter, viewMode, fetchApplications]);
 
   // ── Update status ───────────────────────────────────────────────────────
   const updateStatus = async (appId: string, newStatus: StatusKey) => {
@@ -427,11 +459,70 @@ export default function ApplicantsTable() {
   };
 
   const handleBulkAction = (action: string) => {
-    if (action === "archive") showToast(`Archived ${selectedApplicantIds.size} candidates`, "success");
-    if (action === "export") showToast(`Exported ${selectedApplicantIds.size} candidates`, "success");
-    if (action === "status") showToast(`Status changed for ${selectedApplicantIds.size} candidates`, "success");
     if (action === "email") showToast(`Batch email sent to ${selectedApplicantIds.size} candidates`, "success");
-    setSelectedApplicantIds(new Set()); // clear after action
+    if (action === "export") showToast(`Exported ${selectedApplicantIds.size} candidates`, "success");
+    if (action === "archive" || action === "restore") {
+      executeBulkArchive(action === "archive");
+    }
+    if (action === "delete") {
+      setDeleteTargetId("bulk");
+      setDeleteInput("");
+      setDeleteConfirmOpen(true);
+    }
+  };
+
+  const executeBulkArchive = async (archive: boolean) => {
+    setBulkStatusLoading(true);
+    try {
+      const res = await authFetch(`${API_URL}/admin/applications/bulk-archive`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          application_ids: Array.from(selectedApplicantIds),
+          is_archived: archive,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to process");
+      const data = await res.json();
+      showToast(data.message, "success");
+      fetchApplications(page, debouncedSearch, statusFilter, viewMode === "archived");
+      setSelectedApplicantIds(new Set());
+    } catch (err) {
+      showToast("Action failed", "error");
+    } finally {
+      setBulkStatusLoading(false);
+    }
+  };
+
+  const executeDelete = async () => {
+    if (deleteInput !== "DELETE") {
+      showToast("Please type DELETE to confirm", "error");
+      return;
+    }
+    setDeleteLoading(true);
+    try {
+      let res;
+      if (deleteTargetId === "bulk") {
+        res = await authFetch(`${API_URL}/admin/applications/bulk-delete`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ application_ids: Array.from(selectedApplicantIds) }),
+        });
+      } else {
+        res = await authFetch(`${API_URL}/admin/applications/${deleteTargetId}`, {
+          method: "DELETE",
+        });
+      }
+      if (!res.ok) throw new Error("Delete failed");
+      showToast("Deletion successful", "success");
+      setDeleteConfirmOpen(false);
+      fetchApplications(page, debouncedSearch, statusFilter, viewMode === "archived");
+      setSelectedApplicantIds(new Set());
+    } catch (err) {
+      showToast("Failed to delete", "error");
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   // ── Header cell helper ──────────────────────────────────────────────────
@@ -463,28 +554,141 @@ export default function ApplicantsTable() {
             />
           </div>
           
-          <select 
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="pl-3 pr-8 py-2 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-lg text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 appearance-none"
-          >
-            <option value="all">All Statuses</option>
-            {STATUS_ORDER.map(status => (
-              <option key={status} value={status}>{STATUS_CONFIG[status].label}</option>
-            ))}
-          </select>
+          {/* ── Status Filter Popover ────────────────────────────── */}
+          <div ref={statusFilterRef} className="relative">
+            <button
+              onClick={() => { setIsStatusFilterOpen(v => !v); setStatusFilterSearch(""); }}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border transition-all duration-200 ${
+                statusFilter !== "all"
+                  ? "bg-[#FCEE23]/10 border-[#FCEE23] text-gray-900 dark:text-white"
+                  : "bg-white dark:bg-white/[0.03] border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:border-gray-300"
+              }`}
+            >
+              {statusFilter !== "all" && STATUS_CONFIG[statusFilter as StatusKey] ? (
+                <>
+                  <span className={`w-2 h-2 rounded-full ${STATUS_CONFIG[statusFilter as StatusKey].dot}`} />
+                  {STATUS_CONFIG[statusFilter as StatusKey].label}
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" /></svg>
+                  All Statuses
+                </>
+              )}
+              <svg className={`w-3.5 h-3.5 ml-0.5 transition-transform text-gray-400 ${isStatusFilterOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
 
-          <button
-            onClick={() => setStarredOnly((v) => !v)}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition-all duration-200 ${
-              starredOnly
-                ? "bg-yellow-400 border-yellow-400 text-gray-900 shadow-sm"
-                : "bg-white dark:bg-white/[0.03] border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 hover:border-yellow-400 hover:text-yellow-500"
-            }`}
-          >
-            <svg className={`w-3.5 h-3.5 ${starredOnly ? "text-gray-900" : "text-yellow-400"}`} fill={starredOnly ? "currentColor" : "none"} stroke={starredOnly ? "none" : "currentColor"} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
-            Shortlisted {starredOnly && <span className="ml-1 bg-gray-900/20 text-gray-900 text-xs px-1.5 py-0.5 rounded-full">{displayedApps.length}</span>}
-          </button>
+            {isStatusFilterOpen && (
+              <div className="absolute top-full left-0 mt-2 w-64 rounded-xl border border-gray-100 dark:border-white/[0.08] bg-white dark:bg-[#1A1C23] shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* Internal search */}
+                <div className="p-2 border-b border-gray-100 dark:border-white/[0.06]">
+                  <div className="relative">
+                    <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <input
+                      type="text"
+                      placeholder="Search stages..."
+                      value={statusFilterSearch}
+                      onChange={e => setStatusFilterSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.06] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#FCEE23] text-gray-700 dark:text-gray-300"
+                    />
+                  </div>
+                </div>
+
+                {/* All statuses option */}
+                <div className="p-1.5">
+                  <button
+                    onClick={() => { setStatusFilter("all"); setPage(1); setIsStatusFilterOpen(false); }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                      statusFilter === "all"
+                        ? "bg-gray-50 dark:bg-white/[0.06]"
+                        : "hover:bg-gray-50 dark:hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gradient-to-br from-blue-500 to-purple-500" />
+                      <span className="font-medium text-gray-700 dark:text-gray-200">All Statuses</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 font-medium tabular-nums">{applications.length}</span>
+                      {statusFilter === "all" && <svg className="w-3.5 h-3.5 text-[#FCEE23]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>}
+                    </div>
+                  </button>
+
+                  <div className="my-1.5 border-t border-gray-100 dark:border-white/[0.05]" />
+
+                  {/* Stage options */}
+                  {STATUS_ORDER
+                    .filter(s => STATUS_CONFIG[s].label.toLowerCase().includes(statusFilterSearch.toLowerCase()))
+                    .map(status => {
+                      const count = applications.filter(a => a.status === status).length;
+                      const cfg = STATUS_CONFIG[status];
+                      const isActive = statusFilter === status;
+                      return (
+                        <button
+                          key={status}
+                          onClick={() => { setStatusFilter(status); setPage(1); setIsStatusFilterOpen(false); }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                            isActive ? "bg-gray-50 dark:bg-white/[0.06]" : "hover:bg-gray-50 dark:hover:bg-white/[0.04]"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                            <span className={`font-medium ${isActive ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                              {cfg.label}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-medium tabular-nums px-1.5 py-0.5 rounded-md ${
+                              count === 0 
+                                ? "text-gray-300 dark:text-gray-600" 
+                                : `${cfg.bg} ${cfg.text}`
+                            }`}>{count}</span>
+                            {isActive && <svg className="w-3.5 h-3.5 text-[#FCEE23]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>}
+                          </div>
+                        </button>
+                      );
+                    })
+                  }
+                  {STATUS_ORDER.filter(s => STATUS_CONFIG[s].label.toLowerCase().includes(statusFilterSearch.toLowerCase())).length === 0 && (
+                    <p className="text-center text-xs text-gray-400 py-4">No stages match &ldquo;{statusFilterSearch}&rdquo;</p>
+                  )}
+                </div>
+
+                {/* Clear filter footer */}
+                {statusFilter !== "all" && (
+                  <div className="px-3 py-2 border-t border-gray-100 dark:border-white/[0.06]">
+                    <button onClick={() => { setStatusFilter("all"); setPage(1); setIsStatusFilterOpen(false); }} className="w-full text-center text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+                      Clear filter
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Segmented Control: Active vs Archived ────────────────────── */}
+          <div className="flex bg-gray-100/80 dark:bg-[#111217] p-1 rounded-lg">
+            <button
+              onClick={() => { setViewMode("active"); setPage(1); }}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                viewMode === "active"
+                  ? "bg-white dark:bg-[#1A1C23] text-gray-900 dark:text-white shadow-sm ring-1 ring-gray-200/50 dark:ring-white/[0.05]"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => { setViewMode("archived"); setPage(1); }}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                viewMode === "archived"
+                  ? "bg-[#FCEE23] text-gray-900 shadow-sm"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
+            >
+              Archived
+            </button>
+          </div>
         </div>
 
         {/* Right: Actions & Density */}
@@ -523,7 +727,13 @@ export default function ApplicantsTable() {
               </div>
               <button onClick={() => handleBulkAction('email')} className="px-3 py-1.5 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition">Email</button>
               <button onClick={() => handleBulkAction('export')} className="px-3 py-1.5 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition">Export</button>
-              <button onClick={() => handleBulkAction('archive')} className="px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 text-sm font-medium rounded-lg hover:bg-red-100 transition">Archive</button>
+              <button 
+                onClick={() => handleBulkAction(viewMode === 'active' ? 'archive' : 'restore')} 
+                className="px-3 py-1.5 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
+              >
+                {viewMode === 'active' ? 'Archive' : 'Restore'}
+              </button>
+              <button onClick={() => handleBulkAction('delete')} className="px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 text-sm font-medium rounded-lg hover:bg-red-100 transition">Delete</button>
             </div>
           ) : (
             <>
@@ -544,7 +754,7 @@ export default function ApplicantsTable() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-[#1A1C23]">
+      <div className={`overflow-hidden rounded-xl border border-gray-200 dark:border-white/[0.05] transition-colors ${viewMode === "archived" ? "bg-slate-50 dark:bg-white/[0.02]" : "bg-white dark:bg-[#1A1C23]"}`}>
         <div className="max-w-full overflow-x-auto max-h-[700px] overflow-y-auto scrollbar-hide">
           <Table>
             {/* ── Header ──────────────────────────────────────────────── */}
@@ -658,7 +868,7 @@ export default function ApplicantsTable() {
                   return (
                     <TableRow
                       key={app.id}
-                      className={`group relative transition-all duration-200 ${isSelected ? "bg-[#FCEE23]/10 dark:bg-[#FCEE23]/5 shadow-[inset_3px_0_0_0_#FCEE23]" : "hover:bg-gray-50/50 dark:hover:bg-white/[0.02]"}`}
+                      className={`group relative transition-all duration-200 ${isSelected ? "row-selected" : "hover:bg-gray-50/50 dark:hover:bg-white/[0.02]"}`}
                       // @ts-ignore
                       onMouseEnter={() => setHoveredRowId(app.id)}
                       onMouseLeave={() => setHoveredRowId(null)}
@@ -670,7 +880,7 @@ export default function ApplicantsTable() {
                             type="checkbox" 
                             checked={isSelected}
                             onChange={() => toggleSelect(app.id)}
-                            className={`w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-transparent text-[#FCEE23] accent-[#FCEE23] focus:ring-[#FCEE23] cursor-pointer transition-all duration-200 ${!isSelected ? "opacity-30 group-hover:opacity-100" : "opacity-100"}`} 
+                            className={`w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-transparent text-[#FCEE23] accent-[#FCEE23] focus:ring-[#FCEE23] cursor-pointer transition-all duration-200 ${!isSelected ? "opacity-40 group-hover:opacity-100" : "opacity-100"}`} 
                           />
                         </div>
                       </TableCell>
@@ -950,6 +1160,41 @@ export default function ApplicantsTable() {
                                 </svg>
                                 Reject Application
                               </button>
+
+                              {/* Archive / Restore */}
+                              <button
+                                onClick={async () => {
+                                  setOpenMenuId(null);
+                                  try {
+                                    const res = await authFetch(`${API_URL}/admin/applications/${app.id}/archive`, { method: "PATCH" });
+                                    if (!res.ok) throw new Error("Failed");
+                                    fetchApplications(page, debouncedSearch, statusFilter, viewMode === "archived");
+                                    showToast(viewMode === "active" ? "Archived candidate" : "Restored candidate", "success");
+                                  } catch (err) {
+                                    showToast("Failed to update archive status", "error");
+                                  }
+                                }}
+                                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700 transition"
+                              >
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                {viewMode === "active" ? "Archive" : "Restore"}
+                              </button>
+
+                              <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                              {/* Delete */}
+                              <button
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setDeleteTargetId(app.id);
+                                  setDeleteInput("");
+                                  setDeleteConfirmOpen(true);
+                                }}
+                                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:text-red-500 dark:hover:bg-red-900/20 transition"
+                              >
+                                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                Delete Application
+                              </button>
                             </div>
                           )}
                         </div>
@@ -1028,12 +1273,81 @@ export default function ApplicantsTable() {
 
       {/* Drawer */}
       <ApplicantProfileDrawer
-        applicationId={selectedApplicantId}
+        applicantId={selectedApplicantId}
         onClose={() => setSelectedApplicantId(null)}
         onStatusChange={(id, newStatus) => {
-          setApplications((prev) => prev.map((a) => a.id === id ? { ...a, status: newStatus } : a));
+          setApplications(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
         }}
       />
+
+      {/* ── High-End Delete Confirmation Modal ───────────────────────── */}
+      {deleteConfirmOpen && (() => {
+        let title = "Confirm Deletion";
+        let subTitle = "";
+        
+        if (deleteTargetId === "bulk") {
+          const count = selectedApplicantIds.size;
+          const names = applications.filter(a => selectedApplicantIds.has(a.id)).map(a => `${a.first_name} ${a.last_name}`);
+          
+          if (count <= 3) {
+            title = `Permanently delete ${names.join(", ")}?`;
+          } else {
+            title = `Permanently delete ${count} selected applicants?`;
+          }
+          subTitle = `This action is permanent and will soft-delete the record for audit compliance. To verify, please type `;
+        } else if (deleteTargetId) {
+          const app = applications.find(a => a.id === deleteTargetId);
+          title = `Permanently delete ${app?.first_name} ${app?.last_name}?`;
+          subTitle = `This action is permanent and will soft-delete the record for audit compliance. To verify, please type `;
+        }
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onClick={() => setDeleteConfirmOpen(false)} />
+            <div className="relative bg-white dark:bg-[#1A1C23] w-full max-w-md p-6 rounded-2xl shadow-2xl border border-gray-100 dark:border-white/[0.1] animate-in zoom-in-95 duration-200">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center mb-4 text-red-600 dark:text-red-500">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                  {subTitle}<strong className="text-red-600 dark:text-red-500">DELETE</strong> below.
+                </p>
+                
+                <div className="w-full mb-6">
+                  <input
+                    type="text"
+                    placeholder="Type DELETE"
+                    value={deleteInput}
+                    onChange={(e) => setDeleteInput(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center font-mono text-gray-900 dark:text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-red-500 uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
+                  />
+                </div>
+
+                <div className="flex w-full gap-3">
+                  <button
+                    onClick={() => setDeleteConfirmOpen(false)}
+                    className="flex-1 px-4 py-2 bg-gray-100 dark:bg-white/[0.05] text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-white/[0.1] transition-colors"
+                  >
+                    Review Selection
+                  </button>
+                  <button
+                    onClick={executeDelete}
+                    disabled={deleteInput !== "DELETE" || deleteLoading}
+                    className="flex-1 flex justify-center items-center px-4 py-2 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {deleteLoading ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      "Delete Record"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Toast */}
       <Toast visible={toast.visible} message={toast.message} type={toast.type} />

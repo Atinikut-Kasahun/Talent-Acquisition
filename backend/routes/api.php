@@ -43,7 +43,11 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('admin/applications', [ApplicationController::class, 'index']);
         Route::get('admin/applications/{id}', [ApplicationController::class, 'show']);
         Route::put('admin/applications/bulk-status', [ApplicationController::class, 'bulkUpdateStatus']);
+        Route::put('admin/applications/bulk-archive', [ApplicationController::class, 'bulkArchive']);
+        Route::delete('admin/applications/bulk-delete', [ApplicationController::class, 'bulkDestroy']);
         Route::put('admin/applications/{id}/status', [ApplicationController::class, 'updateStatus']);
+        Route::patch('admin/applications/{id}/archive', [ApplicationController::class, 'toggleArchive']);
+        Route::delete('admin/applications/{id}', [ApplicationController::class, 'destroy']);
         Route::post('admin/applications/{id}/notes', [ApplicationController::class, 'updateNotes']);
         Route::patch('admin/applications/{id}/star', [ApplicationController::class, 'toggleStar']);
     });

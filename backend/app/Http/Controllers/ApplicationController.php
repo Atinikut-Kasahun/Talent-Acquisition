@@ -36,6 +36,14 @@ class ApplicationController extends Controller
             });
         }
 
+        // Filter for active vs archived view
+        if ($request->has('is_archived')) {
+            $isArchived = filter_var($request->is_archived, FILTER_VALIDATE_BOOLEAN);
+            $query->where('is_archived', $isArchived);
+        } else {
+            $query->where('is_archived', false);
+        }
+
         return response()->json($query->paginate(20));
     }
 
@@ -167,8 +175,8 @@ class ApplicationController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'application_ids' => 'required|array',
-            'application_ids.*' => 'integer|exists:job_applications,id',
-            'status' => 'required|string|in:new,reviewing,shortlisted,interviewed,offered,rejected,withdrawn',
+            'application_ids.*' => 'string|exists:job_applications,id',
+            'status' => 'required|string|in:new,reviewing,shortlisted,written_exam,technical_exam,interviewed,offered,rejected,withdrawn',
         ]);
 
         if ($validator->fails()) {
@@ -215,7 +223,7 @@ class ApplicationController extends Controller
         $application = JobApplication::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
-            'status' => 'required|string|in:new,reviewing,shortlisted,interviewed,offered,rejected,withdrawn',
+            'status' => 'required|string|in:new,reviewing,shortlisted,written_exam,technical_exam,interviewed,offered,rejected,withdrawn',
         ]);
 
         if ($validator->fails()) {
@@ -298,6 +306,122 @@ class ApplicationController extends Controller
         return response()->json([
             'message'    => "Application {$action} successfully!",
             'is_starred' => $application->is_starred,
+        ]);
+    }
+
+    /**
+     * Archive or Restore a single application.
+     */
+    public function toggleArchive($id)
+    {
+        $application = JobApplication::findOrFail($id);
+        $user = Auth::guard('api')->user();
+
+        $application->update([
+            'is_archived' => !$application->is_archived,
+        ]);
+
+        $action = $application->is_archived ? 'Archived' : 'Restored';
+
+        activity()
+            ->performedOn($application)
+            ->causedBy($user)
+            ->withProperties(['is_archived' => $application->is_archived])
+            ->log("{$action} application for: {$application->first_name} {$application->last_name}");
+
+        return response()->json([
+            'message'     => "Application {$action} successfully!",
+            'is_archived' => $application->is_archived,
+        ]);
+    }
+
+    /**
+     * Bulk Archive or Restore applications.
+     */
+    public function bulkArchive(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'application_ids' => 'required|array',
+            'application_ids.*' => 'string|exists:job_applications,id',
+            'is_archived' => 'required|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = Auth::guard('api')->user();
+        $isArchived = $request->is_archived;
+        $action = $isArchived ? 'Archived' : 'Restored';
+
+        $updatedCount = JobApplication::whereIn('id', $request->application_ids)
+            ->where('is_archived', '!=', $isArchived)
+            ->update(['is_archived' => $isArchived]);
+
+        if ($updatedCount > 0) {
+            activity()
+                ->causedBy($user)
+                ->withProperties([
+                    'is_archived' => $isArchived,
+                    'application_ids' => $request->application_ids
+                ])
+                ->log("Bulk {$action} {$updatedCount} applications");
+        }
+
+        return response()->json([
+            'message' => "Successfully {$action} {$updatedCount} applications.",
+            'updated_count' => $updatedCount
+        ]);
+    }
+
+    /**
+     * Soft delete a single application.
+     */
+    public function destroy($id)
+    {
+        $application = JobApplication::findOrFail($id);
+        $user = Auth::guard('api')->user();
+
+        $application->delete(); // Soft delete
+
+        activity()
+            ->performedOn($application)
+            ->causedBy($user)
+            ->log("Deleted application for: {$application->first_name} {$application->last_name}");
+
+        return response()->json([
+            'message' => 'Application deleted successfully.',
+        ]);
+    }
+
+    /**
+     * Bulk soft delete applications.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'application_ids' => 'required|array',
+            'application_ids.*' => 'string|exists:job_applications,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = Auth::guard('api')->user();
+
+        $deletedCount = JobApplication::whereIn('id', $request->application_ids)->delete();
+
+        if ($deletedCount > 0) {
+            activity()
+                ->causedBy($user)
+                ->withProperties(['application_ids' => $request->application_ids])
+                ->log("Bulk Deleted {$deletedCount} applications");
+        }
+
+        return response()->json([
+            'message' => "Successfully deleted {$deletedCount} applications.",
+            'deleted_count' => $deletedCount
         ]);
     }
 }

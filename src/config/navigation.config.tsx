@@ -125,17 +125,10 @@ export const SIDEBAR_NAV_CONFIG: NavItem[] = [
 
   // ── Employees ────────────────────────────────────────────────────────────
   {
-    name: "EMPLOYEES",
+    name: "Employees",
     icon: <GroupIcon />,
+    path: "/employees",
     roles: ["superadmin", "admin", "hr", "HR manager"],
-    subItems: [
-      {
-        name: "View Employees",
-        path: "/basic-tables",
-        pro: false,
-        roles: ["superadmin", "admin", "hr", "HR manager"],
-      },
-    ],
   },
 
   // ── Pages (dev / utility) ────────────────────────────────────────────────

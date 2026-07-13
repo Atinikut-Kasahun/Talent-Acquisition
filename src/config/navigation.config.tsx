@@ -106,15 +106,6 @@ export const SIDEBAR_NAV_CONFIG: NavItem[] = [
     roles: ["superadmin", "admin", "hr", "viewer", "managing director", "HR manager"],
   },
 
-  // ── Hiring Plan ──────────────────────────────────────────────────────────
-  {
-    name: "HIRING PLAN",
-    icon: <PageIcon />,
-    path: "/hiring-plan",
-    roles: ["general Manager"],
-  },
-
-
   // ── Chat ─────────────────────────────────────────────────────────────────
   {
     name: "Chat",

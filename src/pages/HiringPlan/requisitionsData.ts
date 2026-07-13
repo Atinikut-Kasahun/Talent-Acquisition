@@ -25,7 +25,38 @@ export interface Requisition {
   lastUpdatedAt: string; // ISO datetime — drives "2h ago" / "1d ago" display
   status: ReqStatus;
   reason: string;
+  requestedBy?: string;
+  jobDescription?: string;
 }
+
+// Canonical department list for the New Requisition wizard — a superset of
+// whatever departments already exist in mock data, so new requisitions aren't
+// limited to only the departments seen so far.
+export const DEPARTMENTS = [
+  "Sales",
+  "Operations",
+  "Finance",
+  "Marketing",
+  "IT",
+  "Engineering",
+  "Admin",
+  "Design",
+  "Management",
+];
+
+// Starter JD text per department — a "smart template" convenience for the
+// wizard's Justification & JD step. Users can freely edit after it populates.
+export const JD_TEMPLATES: Record<string, string> = {
+  Sales: "We are looking for a results-driven professional to grow revenue and manage client relationships. Responsibilities include prospecting, closing deals, and maintaining a healthy pipeline. Requirements: proven track record in sales, strong communication skills, CRM proficiency.",
+  Operations: "We are seeking an organized professional to oversee daily operations, optimize processes, and ensure smooth execution across teams. Requirements: strong project management skills, attention to detail, experience with operational tooling.",
+  Finance: "We are hiring a detail-oriented professional to manage financial reporting, budgeting, and compliance. Requirements: accounting/finance background, proficiency with financial systems, strong analytical skills.",
+  Marketing: "We are looking for a creative professional to develop and execute marketing campaigns across channels. Requirements: experience with digital marketing, content strategy, and performance analytics.",
+  IT: "We are seeking a technical professional to support and maintain internal systems and infrastructure. Requirements: strong troubleshooting skills, experience with relevant systems/networks, ability to support end users.",
+  Engineering: "We are looking for a skilled engineer to design, build, and maintain software systems. Requirements: strong problem-solving skills, relevant technical stack experience, ability to collaborate cross-functionally.",
+  Admin: "We are seeking a reliable professional to support front-desk and administrative operations. Requirements: strong organizational skills, professionalism, ability to multitask.",
+  Design: "We are looking for a creative professional to design user-facing experiences and visual assets. Requirements: strong portfolio, proficiency with design tooling, collaborative mindset.",
+  Management: "We are seeking an experienced leader to manage a team and drive departmental goals. Requirements: proven leadership experience, strong communication skills, strategic thinking.",
+};
 
 export const STATUS_STYLES: Record<
   ReqStatus,

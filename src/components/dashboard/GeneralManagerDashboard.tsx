@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import Pagination from "../ui/pagination/Pagination";
+import NewRequisitionWizard from "./NewRequisitionWizard";
 import {
   HEADCOUNT_BUDGET,
   MOCK_REQUISITIONS,
@@ -25,9 +27,29 @@ function hoursSince(iso: string): number {
 
 export default function GeneralManagerDashboard() {
   const navigate = useNavigate();
-  const [requisitions] = useState<Requisition[]>(MOCK_REQUISITIONS);
+  const [requisitions, setRequisitions] = useState<Requisition[]>(MOCK_REQUISITIONS);
   const [timelineTarget, setTimelineTarget] = useState<Requisition | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  const storedUser = localStorage.getItem("user");
+  const currentUserName = storedUser ? JSON.parse(storedUser)?.name ?? "" : "";
+
+  const nextRequisitionId = useMemo(() => {
+    const maxNum = requisitions.reduce((max, r) => {
+      const match = r.id.match(/REQ-(\d+)/);
+      const num = match ? parseInt(match[1], 10) : 0;
+      return Math.max(max, num);
+    }, 0);
+    return `REQ-${String(maxNum + 1).padStart(3, "0")}`;
+  }, [requisitions]);
+
+  function handleWizardSubmit(newReq: Requisition) {
+    setRequisitions((prev) => [newReq, ...prev]);
+    setWizardOpen(false);
+    setToast(`Requisition ${newReq.id} submitted for MD approval.`);
+    setTimeout(() => setToast(null), 4000);
+  }
 
   // ── Derived KPIs ───────────────────────────────────────────────────────
   const totalOpen = requisitions.filter(
@@ -38,28 +60,66 @@ export default function GeneralManagerDashboard() {
     (r) => r.status === "Pending MD Approval" || r.status === "Pending HR Approval"
   );
 
-  const avgApprovalDays = useMemo(() => {
-    const resolved = requisitions.filter((r) => r.approvedAt);
-    if (resolved.length === 0) return null;
-    const totalDays = resolved.reduce((sum, r) => {
-      const submitted = new Date(r.submittedAt).getTime();
-      const approved = new Date(r.approvedAt!).getTime();
-      return sum + (approved - submitted) / (1000 * 60 * 60 * 24);
-    }, 0);
-    return totalDays / resolved.length;
-  }, [requisitions]);
+  const approvedCount = requisitions.filter((r) => r.status === "Approved").length;
+  const rejectedCount = requisitions.filter((r) => r.status === "Rejected").length;
 
-  const headcountUsed = requisitions
-    .filter((r) => ["Approved", "In Progress", "Posted"].includes(r.status))
-    .reduce((sum, r) => sum + r.headcount, 0);
-  const budgetPct = Math.min(100, Math.round((headcountUsed / HEADCOUNT_BUDGET.total) * 100));
-
-  // Bottlenecks: pending approval and untouched for 48h+
+  // Bottlenecks: pending approval and untouched for 48h+ (always computed off the
+  // full unfiltered set — this panel tracks urgency, not the table's current view)
   const bottlenecks = requisitions.filter(
     (r) =>
       (r.status === "Pending MD Approval" || r.status === "Pending HR Approval") &&
       hoursSince(r.lastUpdatedAt) >= 48
   );
+
+  // ── Facet filters (multi-select, Jira/Linear-style) ───────────────────
+  const allDepartments = useMemo(
+    () => Array.from(new Set(requisitions.map((r) => r.department))).sort(),
+    [requisitions]
+  );
+  const allStatuses = useMemo(
+    () => Array.from(new Set(requisitions.map((r) => r.status))),
+    [requisitions]
+  );
+
+  const [departmentFilter, setDepartmentFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+
+  // ── Column visibility ("View Settings") ────────────────────────────────
+  const [visibleCols, setVisibleCols] = useState({
+    department: true,
+    stage: true,
+    lastUpdated: true,
+  });
+
+  // ── Pagination ──────────────────────────────────────────────────────────
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const filteredRequisitions = useMemo(() => {
+    return requisitions.filter((r) => {
+      if (r.status === "Closed") return false;
+      if (departmentFilter.length > 0 && !departmentFilter.includes(r.department)) return false;
+      if (statusFilter.length > 0 && !statusFilter.includes(r.status)) return false;
+      return true;
+    });
+  }, [requisitions, departmentFilter, statusFilter]);
+
+  const paginatedRequisitions = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredRequisitions.slice(start, start + pageSize);
+  }, [filteredRequisitions, page, pageSize]);
+
+  const hasActiveFilters = departmentFilter.length > 0 || statusFilter.length > 0;
+
+  useEffect(() => {
+    setPage(1);
+  }, [departmentFilter, statusFilter]);
+
+  function clearAllFilters() {
+    setDepartmentFilter([]);
+    setStatusFilter([]);
+    setPage(1);
+  }
 
   function handleNudge(req: Requisition) {
     const approver = req.status === "Pending MD Approval" ? "Managing Director" : "HR";
@@ -90,8 +150,8 @@ export default function GeneralManagerDashboard() {
           </p>
         </div>
         <button
-          onClick={() => navigate("/hiring-plan")}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-950 text-sm font-semibold shadow-sm transition-all shrink-0"
+          onClick={() => setWizardOpen(true)}
+          className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-[#1A1A1A] hover:bg-[#FCEE23] text-white hover:text-gray-900 text-sm font-semibold shadow-sm hover:shadow-lg transition-all duration-200 shrink-0"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 4v16m8-8H4" />
@@ -119,28 +179,23 @@ export default function GeneralManagerDashboard() {
           }
         />
         <KpiCard
-          label="Avg. Approval Velocity"
-          value={avgApprovalDays !== null ? `${avgApprovalDays.toFixed(1)}d` : "—"}
-          sublabel="Time to clear full pipeline"
+          label="Approved"
+          value={approvedCount}
+          sublabel="Cleared full approval"
+          accent="text-green-500"
           icon={
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           }
         />
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Budget Utilization</span>
-            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-              {headcountUsed}/{HEADCOUNT_BUDGET.total}
-            </span>
-          </div>
-          <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${budgetPct >= 90 ? "bg-red-500" : budgetPct >= 70 ? "bg-amber-400" : "bg-green-500"}`}
-              style={{ width: `${budgetPct}%` }}
-            />
-          </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">{budgetPct}% of quarterly headcount consumed</p>
-        </div>
+        <KpiCard
+          label="Rejected"
+          value={rejectedCount}
+          sublabel="Did not clear approval"
+          accent={rejectedCount > 0 ? "text-red-500" : "text-gray-900 dark:text-white"}
+          icon={
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          }
+        />
       </div>
 
       {/* ── Main grid: Pipeline + Attention panel ────────────────────── */}
@@ -160,54 +215,124 @@ export default function GeneralManagerDashboard() {
             </button>
           </div>
 
+          <div className="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-gray-100 dark:border-gray-800">
+            <FacetFilter
+              label="Department"
+              options={allDepartments}
+              selected={departmentFilter}
+              onChange={setDepartmentFilter}
+            />
+            <FacetFilter
+              label="Status"
+              options={allStatuses}
+              selected={statusFilter}
+              onChange={setStatusFilter}
+              renderOption={(s) => (
+                <span className="flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${STATUS_STYLES[s as Requisition["status"]].dot}`} />
+                  {s}
+                </span>
+              )}
+            />
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors ml-1"
+              >
+                Clear all filters
+              </button>
+            )}
+
+            <div className="ml-auto">
+              <ColumnToggle visibleCols={visibleCols} onChange={setVisibleCols} />
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
-                  {["Requisition Title", "Current Stage", "Last Updated", "Action"].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap last:text-right last:pr-6">
-                      {h}
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
+                    Requisition Title
+                  </th>
+                  {visibleCols.stage && (
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
+                      Current Stage
                     </th>
-                  ))}
+                  )}
+                  {visibleCols.lastUpdated && (
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
+                      Last Updated
+                    </th>
+                  )}
+                  <th className="text-right px-4 py-3 pr-6 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {requisitions
-                  .filter((r) => r.status !== "Closed")
-                  .slice(0, 6)
-                  .map((req) => {
-                    const style = STATUS_STYLES[req.status];
-                    const isBottleneck = bottlenecks.some((b) => b.id === req.id);
-                    return (
-                      <tr key={req.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <span className="block font-medium text-gray-900 dark:text-white text-sm">{req.title}</span>
+                {paginatedRequisitions.map((req) => {
+                  const style = STATUS_STYLES[req.status];
+                  const isBottleneck = bottlenecks.some((b) => b.id === req.id);
+                  return (
+                    <tr key={req.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="block font-medium text-gray-900 dark:text-white text-sm">{req.title}</span>
+                        {visibleCols.department && (
                           <span className="block text-xs text-gray-400 dark:text-gray-500 mt-0.5">{req.department}</span>
-                        </td>
+                        )}
+                      </td>
+                      {visibleCols.stage && (
                         <td className="px-4 py-3.5 whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${style.bg} ${style.text}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
                             {req.status}
                           </span>
                         </td>
+                      )}
+                      {visibleCols.lastUpdated && (
                         <td className="px-4 py-3.5 text-xs whitespace-nowrap">
                           <span className={isBottleneck ? "text-red-500 font-semibold" : "text-gray-400 dark:text-gray-500"}>
                             {timeAgo(req.lastUpdatedAt)}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 text-right whitespace-nowrap pr-6">
-                          <button
-                            onClick={() => setTimelineTarget(req)}
-                            className="text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-                          >
-                            View Timeline
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      )}
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap pr-6">
+                        <button
+                          onClick={() => setTimelineTarget(req)}
+                          className="text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                        >
+                          View Timeline
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {paginatedRequisitions.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-10 text-center text-sm text-gray-400">
+                      No requisitions match the current filters.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
+          </div>
+
+          <div className="px-6 pb-2">
+            <Pagination
+              currentPage={page}
+              totalItems={filteredRequisitions.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              itemLabel="requisitions"
+              showGoToPage
+            />
           </div>
         </div>
 
@@ -290,6 +415,15 @@ export default function GeneralManagerDashboard() {
           </div>
         </div>
       )}
+
+      {/* ── New Requisition Wizard ────────────────────────────────────── */}
+      <NewRequisitionWizard
+        isOpen={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onSubmit={handleWizardSubmit}
+        requestedBy={currentUserName}
+        nextId={nextRequisitionId}
+      />
     </div>
   );
 }
@@ -324,7 +458,183 @@ function KpiCard({
   );
 }
 
-// ── Horizontal timeline stepper ─────────────────────────────────────────
+// ── Facet filter: multi-select pill with popover, matching Jira/Linear-style
+// "query builder" filtering. Active state = tinted pill + inline "x" to clear
+// just this facet; "Clear all filters" (rendered by the parent) clears every
+// facet at once. ──────────────────────────────────────────────────────────
+function FacetFilter({
+  label,
+  options,
+  selected,
+  onChange,
+  renderOption,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+  renderOption?: (opt: string) => React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function toggleOption(opt: string) {
+    onChange(selected.includes(opt) ? selected.filter((o) => o !== opt) : [...selected, opt]);
+  }
+
+  const isActive = selected.length > 0;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+          isActive
+            ? "bg-[#FCEE23]/10 border-[#FCEE23] text-gray-900 dark:text-white"
+            : "bg-white dark:bg-white/[0.03] border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+        }`}
+      >
+        {label}
+        {isActive && (
+          <span className="inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[10px] font-semibold">
+            {selected.length}
+          </span>
+        )}
+        {isActive ? (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange([]);
+            }}
+            className="ml-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 p-0.5"
+            aria-label={`Clear ${label} filter`}
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </span>
+        ) : (
+          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-2 w-52 rounded-xl border border-gray-100 dark:border-white/[0.08] bg-white dark:bg-[#1A1C23] shadow-xl z-50 overflow-hidden py-1.5">
+          {options.map((opt) => {
+            const checked = selected.includes(opt);
+            return (
+              <button
+                key={opt}
+                onClick={() => toggleOption(opt)}
+                className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left transition-colors ${
+                  checked ? "bg-gray-50 dark:bg-white/[0.06] font-semibold" : "hover:bg-gray-50 dark:hover:bg-white/[0.04] text-gray-700 dark:text-gray-300"
+                }`}
+              >
+                <span
+                  className={`w-3.5 h-3.5 rounded flex items-center justify-center border ${
+                    checked ? "bg-gray-900 dark:bg-white border-gray-900 dark:border-white" : "border-gray-300 dark:border-gray-600"
+                  }`}
+                >
+                  {checked && (
+                    <svg className="w-2.5 h-2.5 text-white dark:text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </span>
+                {renderOption ? renderOption(opt) : opt}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Column visibility ("View Settings") popover ────────────────────────────
+type VisibleCols = { department: boolean; stage: boolean; lastUpdated: boolean };
+
+function ColumnToggle({
+  visibleCols,
+  onChange,
+}: {
+  visibleCols: VisibleCols;
+  onChange: (cols: VisibleCols) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const options: { key: keyof VisibleCols; label: string }[] = [
+    { key: "department", label: "Department (subtitle)" },
+    { key: "stage", label: "Current Stage" },
+    { key: "lastUpdated", label: "Last Updated" },
+  ];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/[0.03] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+        </svg>
+        View
+      </button>
+
+      {open && (
+        <div className="absolute top-full right-0 mt-2 w-56 rounded-xl border border-gray-100 dark:border-white/[0.08] bg-white dark:bg-[#1A1C23] shadow-xl z-50 overflow-hidden py-1.5">
+          <p className="px-3.5 pt-1 pb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+            Toggle columns
+          </p>
+          {options.map(({ key, label }) => {
+            const checked = visibleCols[key];
+            return (
+              <button
+                key={key}
+                onClick={() => onChange({ ...visibleCols, [key]: !checked })}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
+              >
+                <span
+                  className={`w-3.5 h-3.5 rounded flex items-center justify-center border ${
+                    checked ? "bg-gray-900 dark:bg-white border-gray-900 dark:border-white" : "border-gray-300 dark:border-gray-600"
+                  }`}
+                >
+                  {checked && (
+                    <svg className="w-2.5 h-2.5 text-white dark:text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </span>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 function TimelineStepper({ currentIndex }: { currentIndex: number }) {
   return (
     <div className="flex items-center">

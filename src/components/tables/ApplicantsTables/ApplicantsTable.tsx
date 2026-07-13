@@ -7,7 +7,7 @@ import {
   TableRow,
 } from "../../ui/table";
 import ApplicantProfileDrawer from "./ApplicantProfileDrawer";
-import { authFetch, getAuthHeaders } from "../../../utils/authFetch";
+import { authFetch } from "../../../utils/authFetch";
 
 const API_URL =
   import.meta.env.VITE_API_BASE_URL ||
@@ -816,7 +816,7 @@ export default function ApplicantsTable() {
                       </svg>
                       <p className="text-sm text-gray-400">{error}</p>
                       <button
-                        onClick={() => fetchApplications(page)}
+                        onClick={() => fetchApplications(page, debouncedSearch, statusFilter, viewMode === "archived")}
                         className="text-xs font-medium px-4 py-1.5 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition"
                       >
                         Retry
@@ -1273,7 +1273,7 @@ export default function ApplicantsTable() {
 
       {/* Drawer */}
       <ApplicantProfileDrawer
-        applicantId={selectedApplicantId}
+        applicationId={selectedApplicantId}
         onClose={() => setSelectedApplicantId(null)}
         onStatusChange={(id, newStatus) => {
           setApplications(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));

@@ -1,90 +1,15 @@
 import { useState } from "react";
 import PageMeta from "../../components/common/PageMeta";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-type ReqStatus =
-  | "Draft"
-  | "Pending MD Approval"
-  | "Approved"
-  | "Rejected"
-  | "In Progress"
-  | "Closed";
-
-interface Requisition {
-  id: string;
-  title: string;
-  department: string;
-  headcount: number;
-  submittedAt: string;
-  status: ReqStatus;
-  reason: string;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Mock data — replace with real API calls when backend is ready
-// ─────────────────────────────────────────────────────────────────────────────
-const MOCK_REQUISITIONS: Requisition[] = [
-  {
-    id: "REQ-001",
-    title: "Senior Sales Representative",
-    department: "Sales",
-    headcount: 3,
-    submittedAt: "2025-05-10",
-    status: "Approved",
-    reason: "Business expansion into new region",
-  },
-  {
-    id: "REQ-002",
-    title: "Warehouse Supervisor",
-    department: "Operations",
-    headcount: 2,
-    submittedAt: "2025-05-28",
-    status: "Pending MD Approval",
-    reason: "Replacement for 2 departing staff",
-  },
-  {
-    id: "REQ-003",
-    title: "Finance Officer",
-    department: "Finance",
-    headcount: 1,
-    submittedAt: "2025-06-01",
-    status: "In Progress",
-    reason: "New project workload",
-  },
-  {
-    id: "REQ-004",
-    title: "Marketing Coordinator",
-    department: "Marketing",
-    headcount: 2,
-    submittedAt: "2025-04-15",
-    status: "Rejected",
-    reason: "Campaign support",
-  },
-  {
-    id: "REQ-005",
-    title: "IT Support Specialist",
-    department: "IT",
-    headcount: 1,
-    submittedAt: "2025-06-02",
-    status: "Draft",
-    reason: "Infrastructure growth",
-  },
-];
+import {
+  MOCK_REQUISITIONS,
+  ReqStatus,
+  Requisition,
+  STATUS_STYLES,
+} from "./requisitionsData";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Status badge helper
 // ─────────────────────────────────────────────────────────────────────────────
-const STATUS_STYLES: Record<ReqStatus, { bg: string; text: string; dot: string }> = {
-  "Draft":                { bg: "bg-gray-100 dark:bg-gray-800",     text: "text-gray-600 dark:text-gray-400",   dot: "bg-gray-400" },
-  "Pending MD Approval":  { bg: "bg-yellow-50 dark:bg-yellow-900/20", text: "text-yellow-700 dark:text-yellow-400", dot: "bg-yellow-400" },
-  "Approved":             { bg: "bg-green-50 dark:bg-green-900/20", text: "text-green-700 dark:text-green-400",  dot: "bg-green-500" },
-  "Rejected":             { bg: "bg-red-50 dark:bg-red-900/20",     text: "text-red-700 dark:text-red-400",     dot: "bg-red-500"   },
-  "In Progress":          { bg: "bg-blue-50 dark:bg-blue-900/20",   text: "text-blue-700 dark:text-blue-400",   dot: "bg-blue-500"  },
-  "Closed":               { bg: "bg-gray-100 dark:bg-gray-800",     text: "text-gray-500 dark:text-gray-500",   dot: "bg-gray-400"  },
-};
-
 function StatusBadge({ status }: { status: ReqStatus }) {
   const s = STATUS_STYLES[status];
   return (
@@ -122,6 +47,7 @@ function NewRequisitionModal({ onClose, onSubmit }: ModalProps) {
         department: form.department,
         headcount: form.headcount,
         submittedAt: new Date().toISOString().split("T")[0],
+        lastUpdatedAt: new Date().toISOString(),
         status: "Pending MD Approval",
         reason: form.reason,
       };

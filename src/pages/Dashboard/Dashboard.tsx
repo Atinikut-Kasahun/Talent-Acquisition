@@ -5,11 +5,13 @@ import MonthlyTarget from "../../components/reports/MonthlyTarget";
 import RecentApplicants from "../../components/reports/RecentApplicants";
 import DemographicCard from "../../components/reports/DemographicCard";
 import PageMeta from "../../components/common/PageMeta";
+import GeneralManagerDashboard from "../../components/dashboard/GeneralManagerDashboard";
 
 export default function Dashboard() {
   const storedUser = localStorage.getItem("user");
   const user = storedUser ? JSON.parse(storedUser) : null;
   const hideReportsForSuperAdmin = user?.email === "superadmin@droga-group.com";
+  const isGeneralManager = user?.role === "general Manager";
 
   return (
     <>
@@ -18,7 +20,9 @@ export default function Dashboard() {
         description="Droga Group HR Management Dashboard - Manage job postings, applicants, and recruitment."
       />
 
-      {hideReportsForSuperAdmin ? null : (
+      {isGeneralManager ? (
+        <GeneralManagerDashboard />
+      ) : hideReportsForSuperAdmin ? null : (
         <div className="grid grid-cols-12 gap-4 md:gap-6">
           <div className="col-span-12 space-y-6 xl:col-span-7">
             <ReportMetrics />

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router";
 import Pagination from "../ui/pagination/Pagination";
 import NewRequisitionWizard from "./NewRequisitionWizard";
 import {
@@ -26,7 +25,6 @@ function hoursSince(iso: string): number {
 }
 
 export default function GeneralManagerDashboard() {
-  const navigate = useNavigate();
   const [requisitions, setRequisitions] = useState<Requisition[]>(MOCK_REQUISITIONS);
   const [timelineTarget, setTimelineTarget] = useState<Requisition | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -202,17 +200,9 @@ export default function GeneralManagerDashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Requisition Pipeline Widget */}
         <div className="xl:col-span-9 min-w-0 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
-          <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
-            <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Requisition Pipeline</h2>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Stage-by-stage accountability for every open request</p>
-            </div>
-            <button
-              onClick={() => navigate("/hiring-plan")}
-              className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-            >
-              View all →
-            </button>
+          <div className="px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Requisition Pipeline</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Stage-by-stage accountability for every open request</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-gray-100 dark:border-gray-800">
@@ -647,9 +637,9 @@ function TimelineStepper({ currentIndex }: { currentIndex: number }) {
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
                   isDone
-                    ? "bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white dark:text-gray-900"
+                    ? "bg-[#22C55E] border-[#22C55E] text-white"
                     : isCurrent
-                    ? "border-gray-900 dark:border-white text-gray-900 dark:text-white bg-white dark:bg-gray-900"
+                    ? "border-gray-900 dark:border-white text-gray-900 dark:text-white bg-[#FCEE23]/15"
                     : "border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 bg-white dark:bg-gray-900"
                 }`}
               >
@@ -661,12 +651,12 @@ function TimelineStepper({ currentIndex }: { currentIndex: number }) {
                   i + 1
                 )}
               </div>
-              <span className={`text-[11px] font-medium text-center whitespace-nowrap ${isCurrent ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"}`}>
+              <span className={`text-[11px] text-center whitespace-nowrap ${isCurrent ? "text-gray-900 dark:text-white font-semibold" : isDone ? "text-gray-500 dark:text-gray-400 font-medium" : "text-gray-300 dark:text-gray-600 font-medium"}`}>
                 {stage}
               </span>
             </div>
             {i < PIPELINE_STAGES.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-2 mb-5 ${isDone ? "bg-gray-900 dark:bg-white" : "bg-gray-200 dark:bg-gray-700"}`} />
+              <div className={`flex-1 h-0.5 mx-2 mb-5 ${isDone ? "bg-[#22C55E]" : "bg-gray-100 dark:bg-gray-800"}`} />
             )}
           </div>
         );

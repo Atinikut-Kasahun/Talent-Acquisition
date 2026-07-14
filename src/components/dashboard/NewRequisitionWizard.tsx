@@ -42,11 +42,13 @@ export default function NewRequisitionWizard({
 }: NewRequisitionWizardProps) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<WizardForm>(EMPTY_FORM);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset the wizard fresh every time it's opened, prefilling smart defaults
   useEffect(() => {
     if (isOpen) {
       setStep(0);
+      setIsSubmitting(false);
       setForm({ ...EMPTY_FORM, requestedBy });
     }
   }, [isOpen, requestedBy]);
@@ -61,25 +63,30 @@ export default function NewRequisitionWizard({
   }
 
   function handleSubmit() {
-    const newReq: Requisition = {
-      id: nextId,
-      title: form.title.trim(),
-      department: form.department,
-      headcount: Math.max(1, Number(form.headcount) || 1),
-      submittedAt: new Date().toISOString().split("T")[0],
-      lastUpdatedAt: new Date().toISOString(),
-      status: "Pending MD Approval",
-      reason: form.reason.trim(),
-      requestedBy: form.requestedBy.trim(),
-      jobDescription: form.jobDescription.trim(),
-    };
-    onSubmit(newReq);
+    setIsSubmitting(true);
+    // Brief processing delay gives the loading state somewhere to actually show —
+    // swap for a real API call + await when the requisitions backend exists.
+    setTimeout(() => {
+      const newReq: Requisition = {
+        id: nextId,
+        title: form.title.trim(),
+        department: form.department,
+        headcount: Math.max(1, Number(form.headcount) || 1),
+        submittedAt: new Date().toISOString().split("T")[0],
+        lastUpdatedAt: new Date().toISOString(),
+        status: "Pending MD Approval",
+        reason: form.reason.trim(),
+        requestedBy: form.requestedBy.trim(),
+        jobDescription: form.jobDescription.trim(),
+      };
+      onSubmit(newReq);
+    }, 700);
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div className="relative w-full max-w-[600px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
           <div>
@@ -119,7 +126,8 @@ export default function NewRequisitionWizard({
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-white/[0.02]">
           <button
             onClick={() => (step === 0 ? onClose() : setStep((s) => s - 1))}
-            className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            disabled={isSubmitting}
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {step === 0 ? "Cancel" : "Back"}
           </button>
@@ -135,9 +143,20 @@ export default function NewRequisitionWizard({
           ) : (
             <button
               onClick={handleSubmit}
-              className="px-5 py-2 text-sm font-semibold rounded-lg bg-[#1A1A1A] hover:bg-[#FCEE23] hover:text-gray-900 text-white transition-all shadow-sm hover:shadow-md"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-[#1A1A1A] hover:bg-[#FCEE23] hover:text-gray-900 text-white transition-all shadow-sm hover:shadow-md disabled:opacity-80 disabled:cursor-wait disabled:hover:bg-[#1A1A1A] disabled:hover:text-white min-w-[168px] justify-center"
             >
-              Submit for Approval
+              {isSubmitting ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Submitting…
+                </>
+              ) : (
+                "Submit for Approval"
+              )}
             </button>
           )}
         </div>
@@ -159,9 +178,9 @@ function WizardProgress({ steps, currentIndex }: { steps: readonly string[]; cur
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors shrink-0 ${
                   isDone
-                    ? "bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white dark:text-gray-900"
+                    ? "bg-[#22C55E] border-[#22C55E] text-white"
                     : isCurrent
-                    ? "border-gray-900 dark:border-white text-gray-900 dark:text-white bg-white dark:bg-gray-900"
+                    ? "border-gray-900 dark:border-white text-gray-900 dark:text-white bg-[#FCEE23]/15"
                     : "border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 bg-white dark:bg-gray-900"
                 }`}
               >
@@ -173,12 +192,12 @@ function WizardProgress({ steps, currentIndex }: { steps: readonly string[]; cur
                   i + 1
                 )}
               </div>
-              <span className={`text-xs font-medium whitespace-nowrap hidden sm:inline ${isCurrent ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"}`}>
+              <span className={`text-xs whitespace-nowrap hidden sm:inline ${isCurrent ? "text-gray-900 dark:text-white font-semibold" : isDone ? "text-gray-500 dark:text-gray-400 font-medium" : "text-gray-300 dark:text-gray-600 font-medium"}`}>
                 {label}
               </span>
             </div>
             {i < steps.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-3 ${isDone ? "bg-gray-900 dark:bg-white" : "bg-gray-200 dark:bg-gray-700"}`} />
+              <div className={`flex-1 h-0.5 mx-3 ${isDone ? "bg-[#22C55E]" : "bg-gray-100 dark:bg-gray-800"}`} />
             )}
           </div>
         );
@@ -291,7 +310,7 @@ function StepRoleDetails({
   setForm: React.Dispatch<React.SetStateAction<WizardForm>>;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <FloatingInput
         label="Job Title"
         value={form.title}
@@ -330,7 +349,7 @@ function StepRequirements({
   onTemplateSelect: (dept: string) => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <FloatingInput
         label="Business Reason"
         value={form.reason}
@@ -349,6 +368,9 @@ function StepRequirements({
           placeholder="Describe the role's responsibilities and requirements, or pick a template above to auto-fill…"
           className="w-full px-3.5 py-3 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-400 dark:focus:border-gray-500 transition-colors resize-none"
         />
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">
+          Provide a brief summary of core responsibilities and requirements.
+        </p>
       </div>
     </div>
   );
@@ -402,33 +424,53 @@ function TemplatePicker({ onSelect }: { onSelect: (dept: string) => void }) {
 }
 
 // ── Step 3: Review ──────────────────────────────────────────────────────
-function StepReview({ form, nextId }: { form: WizardForm; nextId: string }) {
-  const rows: [string, string][] = [
-    ["Requisition ID", nextId],
-    ["Job Title", form.title],
-    ["Department", form.department],
-    ["Headcount", form.headcount],
-    ["Requested By", form.requestedBy || "—"],
-    ["Business Reason", form.reason],
-  ];
-
+function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-white/[0.02] p-4 space-y-2.5">
-        {rows.map(([label, value]) => (
-          <div key={label} className="flex items-start justify-between gap-4 text-sm">
-            <span className="text-gray-400 dark:text-gray-500 shrink-0">{label}</span>
-            <span className="text-gray-900 dark:text-white font-medium text-right">{value}</span>
-          </div>
-        ))}
-        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-          <span className="text-gray-400 dark:text-gray-500 text-sm block mb-1">Job Description</span>
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed max-h-32 overflow-y-auto">
-            {form.jobDescription}
-          </p>
+    <div className="flex items-start justify-between gap-4 py-2 text-sm">
+      <span className="font-semibold text-gray-700 dark:text-gray-300 shrink-0">{label}</span>
+      <span className="font-normal text-gray-600 dark:text-gray-400 text-right">{value}</span>
+    </div>
+  );
+}
+
+function StepReview({ form, nextId }: { form: WizardForm; nextId: string }) {
+  return (
+    <div className="space-y-4">
+      {/* Role Information */}
+      <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+        <div className="px-4 py-2.5 bg-gray-50 dark:bg-white/[0.03] border-b border-gray-100 dark:border-gray-800">
+          <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            Role Information
+          </span>
+        </div>
+        <div className="px-4 py-1 divide-y divide-gray-100 dark:divide-gray-800">
+          <ReviewRow label="Requisition ID" value={nextId} />
+          <ReviewRow label="Job Title" value={form.title} />
+          <ReviewRow label="Department" value={form.department} />
+          <ReviewRow label="Headcount" value={form.headcount} />
+          <ReviewRow label="Requested By" value={form.requestedBy || "—"} />
         </div>
       </div>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
+
+      {/* Justification */}
+      <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+        <div className="px-4 py-2.5 bg-gray-50 dark:bg-white/[0.03] border-b border-gray-100 dark:border-gray-800">
+          <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            Justification
+          </span>
+        </div>
+        <div className="px-4 py-3 space-y-3">
+          <ReviewRow label="Business Reason" value={form.reason} />
+          <div>
+            <span className="block font-semibold text-gray-700 dark:text-gray-300 text-sm mb-1">Job Description</span>
+            <p className="text-sm font-normal text-gray-600 dark:text-gray-400 leading-relaxed max-h-32 overflow-y-auto">
+              {form.jobDescription}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-400 dark:text-gray-500">
         This will be routed to the Managing Director for approval.
       </p>
     </div>

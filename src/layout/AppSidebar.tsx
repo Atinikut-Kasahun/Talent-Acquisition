@@ -262,7 +262,7 @@ const AppSidebar: React.FC = () => {
           )}
         </Link>
       </div>
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
+      <div className="flex flex-col flex-1 overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
           <div className="flex flex-col gap-4">
             <div>
@@ -270,7 +270,30 @@ const AppSidebar: React.FC = () => {
             </div>
           </div>
         </nav>
+      </div>
 
+      {/* ── Version tag ─────────────────────────────────────────────────
+          Quiet system-maturity indicator, anchored to the sidebar footer.
+          Links to /changelog. */}
+      <div className="pb-5 pt-2">
+        {isExpanded || isHovered || isMobileOpen ? (
+          <Link
+            to="/changelog"
+            className="group flex items-center gap-1.5 font-mono text-[11px] text-slate-400 dark:text-slate-500 opacity-60 hover:opacity-100 transition-opacity duration-200"
+          >
+            <span>v1.0.0</span>
+            <span aria-hidden="true">·</span>
+            <span>PROD</span>
+          </Link>
+        ) : (
+          <Link
+            to="/changelog"
+            className="flex items-center justify-center font-mono text-[10px] text-slate-400 dark:text-slate-500 opacity-60 hover:opacity-100 transition-opacity duration-200"
+            title="v1.0.0 · PROD"
+          >
+            v1
+          </Link>
+        )}
       </div>
     </aside>
   );

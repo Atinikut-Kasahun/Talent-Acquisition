@@ -58,17 +58,10 @@ export const SIDEBAR_NAV_CONFIG: NavItem[] = [
   {
     name: "Dashboard",
     icon: <GridIcon />,
+    path: "/dashboard",
+    // visible to all roles — each role sees the same /dashboard but the
+    // page renders content conditionally by role
     roles: ALL_ROLES,
-    subItems: [
-      {
-        name: "REPORT",
-        path: "/dashboard",
-        pro: false,
-        // visible to all roles — each role sees the same /dashboard but the
-        // page renders content conditionally by role
-        roles: ALL_ROLES,
-      },
-    ],
   },
 
   // ── Organizations (superadmin only) ──────────────────────────────────────

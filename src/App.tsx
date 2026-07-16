@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router";
 import NotFound from "./pages/OtherPage/NotFound";
+import Changelog from "./pages/OtherPage/Changelog";
 import UserProfiles from "./pages/UserProfiles";
 import Calendar from "./pages/Calendar";
 import BasicTables from "./pages/Tables/BasicTables";
@@ -47,6 +48,9 @@ export default function App() {
 
             {/* ── Single unified dashboard for all roles ── */}
             <Route path="/dashboard" element={<Dashboard />} />
+
+            {/* ── Changelog / Release Notes (linked from sidebar version tag) ── */}
+            <Route path="/changelog" element={<Changelog />} />
 
             {/* ── Organizations (superadmin only) ── */}
             <Route

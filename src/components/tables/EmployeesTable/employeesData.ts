@@ -1,8 +1,3 @@
-// Shared data source for the Employee Directory feature.
-// NOTE: This is currently mock data. When the backend `employees` endpoint
-// lands (auto-populated from "Hired" applicants), swap this out for a fetch
-// in Employees.tsx and pass the results down as props — the shape below is
-// designed to match what that API will likely return.
 
 export type EmployeeStatus = "Active" | "Onboarding" | "Offboarded";
 

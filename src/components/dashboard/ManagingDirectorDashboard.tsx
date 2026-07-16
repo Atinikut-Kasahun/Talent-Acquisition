@@ -8,10 +8,10 @@ import {
 } from "../../pages/HiringPlan/requisitionsData";
 import { Finalist, MOCK_FINALISTS } from "../../pages/HiringPlan/finalistsData";
 
-function formatUSD(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n}`;
+function formatETB(n: number): string {
+  if (n >= 1_000_000) return `ETB ${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `ETB ${(n / 1_000).toFixed(0)}K`;
+  return `ETB ${n}`;
 }
 
 function timeAgo(iso: string): string {
@@ -58,11 +58,19 @@ export default function ManagingDirectorDashboard() {
   }, [selectedId, requisitions, pendingQueue]);
 
   // ── Executive KPIs ───────────────────────────────────────────────────────
-  const budgetLiability = useMemo(() => {
+  const committedLiability = useMemo(() => {
     return requisitions
-      .filter((r) => ["Approved", "Posted", "In Progress", "Pending MD Approval", "Pending HR Approval"].includes(r.status))
+      .filter((r) => ["Approved", "Posted", "In Progress"].includes(r.status))
       .reduce((sum, r) => sum + (r.annualSalary ?? 0) * r.headcount, 0);
   }, [requisitions]);
+
+  const pendingLiability = useMemo(() => {
+    return requisitions
+      .filter((r) => ["Pending MD Approval", "Pending HR Approval"].includes(r.status))
+      .reduce((sum, r) => sum + (r.annualSalary ?? 0) * r.headcount, 0);
+  }, [requisitions]);
+
+  const budgetLiability = committedLiability + pendingLiability;
 
   const pendingApprovalValue = useMemo(() => {
     return pendingQueue.reduce((sum, r) => sum + (r.annualSalary ?? 0) * r.headcount, 0);
@@ -147,6 +155,11 @@ export default function ManagingDirectorDashboard() {
   }
 
   const budgetPct = Math.min(100, Math.round((budgetLiability / TOTAL_BUDGET_CAP) * 100));
+  const committedPct = Math.min(100, (committedLiability / TOTAL_BUDGET_CAP) * 100);
+  const pendingPct = Math.min(100 - committedPct, (pendingLiability / TOTAL_BUDGET_CAP) * 100);
+  const isHealthy = budgetPct < 80;
+  const isWarning = budgetPct >= 80 && budgetPct < 90;
+  const isCritical = budgetPct >= 90;
 
   return (
     <div className="space-y-6">
@@ -170,20 +183,59 @@ export default function ManagingDirectorDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <ExecutiveKpiCard
           label="Total Headcount Budget Liability"
-          value={`${formatUSD(budgetLiability)} / ${formatUSD(TOTAL_BUDGET_CAP)}`}
+          value={`${formatETB(budgetLiability)} / ${formatETB(TOTAL_BUDGET_CAP)}`}
           trend={{ direction: "up", value: "2%", label: "vs last quarter" }}
         >
-          <div className="w-full h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden mt-3">
+          <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden mt-3 flex">
+            {/* Segment A: committed/spent — solid gradient with a soft glow */}
             <div
-              className={`h-full rounded-full ${budgetPct >= 90 ? "bg-red-500" : budgetPct >= 70 ? "bg-amber-400" : "bg-gray-900 dark:bg-white"}`}
-              style={{ width: `${budgetPct}%` }}
+              className={`h-full rounded-full transition-all duration-500 ${
+                isCritical
+                  ? "bg-gradient-to-r from-red-500 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+                  : isWarning
+                  ? "bg-gradient-to-r from-orange-500 to-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.5)]"
+                  : "bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+              }`}
+              style={{ width: `${committedPct}%` }}
             />
+            {/* Segment B: pending forecast — lighter tint + diagonal stripes */}
+            {pendingPct > 0 && (
+              <div
+                className={`h-full rounded-full ml-0.5 transition-all duration-500 ${
+                  isCritical ? "bg-red-300/60" : isWarning ? "bg-orange-300/60" : "bg-emerald-300/60"
+                }`}
+                style={{
+                  width: `${pendingPct}%`,
+                  backgroundImage:
+                    "repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0, rgba(255,255,255,0.35) 3px, transparent 3px, transparent 7px)",
+                }}
+              />
+            )}
           </div>
+          <div className="flex items-center gap-3 mt-2">
+            <span className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+              <span className={`w-2 h-2 rounded-full ${isCritical ? "bg-red-500" : isWarning ? "bg-orange-500" : "bg-emerald-500"}`} />
+              Committed · {formatETB(committedLiability)}
+            </span>
+            {pendingLiability > 0 && (
+              <span className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+                <span
+                  className={`w-2 h-2 rounded-full ${isCritical ? "bg-red-300" : isWarning ? "bg-orange-300" : "bg-emerald-300"}`}
+                />
+                Pending · {formatETB(pendingLiability)}
+              </span>
+            )}
+          </div>
+          {isHealthy === false && (
+            <p className={`text-[11px] mt-1.5 font-medium ${isCritical ? "text-red-500" : "text-orange-500"}`}>
+              {isCritical ? "Budget cap nearly reached" : "Approaching budget cap"}
+            </p>
+          )}
         </ExecutiveKpiCard>
 
         <ExecutiveKpiCard
           label="Pending Approval Value"
-          value={formatUSD(pendingApprovalValue)}
+          value={formatETB(pendingApprovalValue)}
           sublabel={`${pendingQueue.length} requisition${pendingQueue.length === 1 ? "" : "s"} awaiting sign-off`}
           trend={pendingQueue.length > 0 ? { direction: "up", value: `${pendingQueue.length}`, label: "in queue" } : undefined}
         />
@@ -225,15 +277,19 @@ export default function ManagingDirectorDashboard() {
                   <button
                     key={req.id}
                     onClick={() => setSelectedId(req.id)}
-                    className={`w-full text-left px-4 py-3.5 border-l-2 transition-colors ${
+                    className={`w-full text-left px-4 py-3.5 border-l-4 transition-colors ${
                       isSelected
-                        ? "border-l-gray-950 dark:border-l-white bg-gray-50 dark:bg-white/[0.04]"
+                        ? "border-l-gray-950 dark:border-l-white bg-slate-50 dark:bg-white/[0.06]"
                         : "border-l-transparent hover:bg-gray-50/60 dark:hover:bg-white/[0.02]"
                     }`}
                   >
-                    <span className="block text-sm font-semibold text-gray-900 dark:text-white">{req.title}</span>
-                    <span className="block text-xs text-gray-400 dark:text-gray-500 mt-0.5">{req.department}</span>
-                    <span className="block text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    <span className={`block text-sm font-semibold ${isSelected ? "text-gray-950 dark:text-white" : "text-slate-500 dark:text-gray-400"}`}>
+                      {req.title}
+                    </span>
+                    <span className={`block text-xs mt-0.5 ${isSelected ? "text-gray-500 dark:text-gray-400" : "text-slate-400 dark:text-gray-500"}`}>
+                      {req.department}
+                    </span>
+                    <span className={`block text-xs mt-1 ${isSelected ? "text-gray-500 dark:text-gray-400" : "text-slate-400 dark:text-gray-500"}`}>
                       Requested by {req.requestedBy ?? "—"}
                     </span>
                   </button>
@@ -259,28 +315,31 @@ export default function ManagingDirectorDashboard() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-5 mb-5">
-                  <div className="rounded-xl border border-gray-100 dark:border-gray-800 px-4 py-3">
-                    <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Salary Band</span>
-                    <span className="block text-sm font-semibold text-gray-900 dark:text-white mt-1">
-                      {selectedReq.annualSalary ? `${formatUSD(selectedReq.annualSalary)} / yr` : "—"}
-                    </span>
-                  </div>
-                  <div className="rounded-xl border border-gray-100 dark:border-gray-800 px-4 py-3">
-                    <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Submitted</span>
-                    <span className="block text-sm font-semibold text-gray-900 dark:text-white mt-1">{selectedReq.submittedAt}</span>
-                  </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-4 mb-5 text-sm">
+                  <span className="text-slate-500 dark:text-gray-400">Role:</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{selectedReq.department}</span>
+                  <span className="text-slate-300 dark:text-gray-600 mx-1">|</span>
+                  <span className="text-slate-500 dark:text-gray-400">Headcount:</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{selectedReq.headcount}</span>
+                  <span className="text-slate-300 dark:text-gray-600 mx-1">|</span>
+                  <span className="text-slate-500 dark:text-gray-400">Salary Band:</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {selectedReq.annualSalary ? `${formatETB(selectedReq.annualSalary)}/yr` : "—"}
+                  </span>
+                  <span className="text-slate-300 dark:text-gray-600 mx-1">|</span>
+                  <span className="text-slate-500 dark:text-gray-400">Submitted:</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{selectedReq.submittedAt}</span>
                 </div>
 
                 <div className="mb-5">
                   <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Business Justification</span>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedReq.reason}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed max-w-[75ch]">{selectedReq.reason}</p>
                 </div>
 
                 {selectedReq.jobDescription && (
                   <div className="mb-6">
                     <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Job Description</span>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedReq.jobDescription}</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed max-w-[75ch]">{selectedReq.jobDescription}</p>
                   </div>
                 )}
 
@@ -307,14 +366,14 @@ export default function ManagingDirectorDashboard() {
                       onChange={(e) => setDirectiveMessage(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSendDirective()}
                       placeholder={`@${selectedReq.requestedBy ?? "GM"} — add a directive or note…`}
-                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
+                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-white/[0.03] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
                     />
                     <button
                       onClick={handleSendDirective}
                       disabled={directiveMessage.trim().length === 0}
-                      className="px-3.5 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="px-3.5 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                     >
-                      Send
+                      Post Note
                     </button>
                   </div>
                 </div>

@@ -33,7 +33,7 @@ export interface Requisition {
   reason: string;
   requestedBy?: string;
   jobDescription?: string;
-  annualSalary?: number; // per-headcount estimated annual salary (USD) — drives MD budget KPIs
+  annualSalary?: number; // per-headcount estimated annual salary (ETB) — drives MD budget KPIs
   activity?: ActivityEntry[]; // contextual directives / audit trail, newest last
 }
 
@@ -109,7 +109,7 @@ export const HEADCOUNT_BUDGET = {
   total: 40,
 };
 
-// Illustrative company-wide annual headcount budget cap (USD), used by the
+// Illustrative company-wide annual headcount budget cap (ETB), used by the
 // Managing Director dashboard's "Budget Liability" KPI. Swap for a real
 // finance/budget endpoint once one exists.
 export const TOTAL_BUDGET_CAP = 1_500_000;

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { authFetch } from "../../../utils/authFetch";
+import { useToast } from "../../ui/toast/useToast";
+import Toast from "../../ui/toast/Toast";
 
 const API_URL =
   import.meta.env.VITE_API_BASE_URL ||
@@ -103,13 +105,12 @@ export default function ApplicantProfileDrawer({ applicationId, onClose, onStatu
   const [notesSaved, setNotesSaved] = useState(false);
   const [docView, setDocView] = useState<"resume" | string>("resume");
   const [statusDropOpen, setStatusDropOpen] = useState(false);
-  const [toastMsg, setToastMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const { toast, showToast: showToastRaw, dismiss: dismissToast } = useToast();
   const [isStarred, setIsStarred] = useState(false);
   const [togglingstar, setTogglingstar] = useState(false);
 
   const showToast = (text: string, ok = true) => {
-    setToastMsg({ text, ok });
-    setTimeout(() => setToastMsg(null), 3000);
+    showToastRaw({ title: ok ? "Success" : "Error", message: text, variant: ok ? "success" : "error" });
   };
 
   // ── Fetch full application detail ─────────────────────────────────────────
@@ -792,16 +793,7 @@ export default function ApplicantProfileDrawer({ applicationId, onClose, onStatu
       </div>
 
       {/* ── Toast ────────────────────────────────────────────────────────────── */}
-      {toastMsg && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-lg border text-sm font-medium transition-all duration-300 ${toastMsg.ok ? "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-800 dark:text-white" : "bg-red-50 dark:bg-red-900/30 border-red-100 dark:border-red-500/20 text-red-600 dark:text-red-400"}`}>
-          {toastMsg.ok ? (
-            <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-          ) : (
-            <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-          )}
-          {toastMsg.text}
-        </div>
-      )}
+      {toast && <Toast toast={toast} onDismiss={dismissToast} />}
     </>
   );
 

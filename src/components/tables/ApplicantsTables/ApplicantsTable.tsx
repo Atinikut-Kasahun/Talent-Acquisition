@@ -8,6 +8,8 @@ import {
 } from "../../ui/table";
 import ApplicantProfileDrawer from "./ApplicantProfileDrawer";
 import { authFetch } from "../../../utils/authFetch";
+import { useToast } from "../../ui/toast/useToast";
+import Toast from "../../ui/toast/Toast";
 
 const API_URL =
   import.meta.env.VITE_API_BASE_URL ||
@@ -176,65 +178,6 @@ function AvatarFallback({ name }: { name: string }) {
   );
 }
 
-// ── Toast component ─────────────────────────────────────────────────────────
-function Toast({
-  visible,
-  message,
-  type,
-}: {
-  visible: boolean;
-  message: string;
-  type: "success" | "error";
-}) {
-  return (
-    <div
-      className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-5 py-3.5
-        bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700
-        rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]
-        transition-all duration-500 ease-out transform
-        ${visible ? "translate-y-0 opacity-100 scale-100" : "translate-y-10 opacity-0 scale-95 pointer-events-none"}`}
-    >
-      <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-          ${type === "success" ? "bg-green-50 dark:bg-green-500/10" : "bg-red-50 dark:bg-red-500/10"}`}
-      >
-        {type === "success" ? (
-          <svg
-            className="w-4 h-4 text-green-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.5}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        ) : (
-          <svg
-            className="w-4 h-4 text-red-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.5}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        )}
-      </div>
-      <p className="text-sm font-medium text-gray-800 dark:text-white">
-        {message}
-      </p>
-    </div>
-  );
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // Main Component
 // ═════════════════════════════════════════════════════════════════════════════
@@ -287,19 +230,14 @@ export default function ApplicantsTable() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Toast
-  const [toast, setToast] = useState({
-    visible: false,
-    message: "",
-    type: "success" as "success" | "error",
-  });
+  // Toast — shared enterprise Toast component/hook (same one used app-wide)
+  const { toast, showToast: showToastRaw, dismiss: dismissToast } = useToast();
 
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
-    setToast({ visible: true, message, type });
-    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
+    showToastRaw({ title: type === "success" ? "Success" : "Error", message, variant: type });
   };
 
   // ── Click outside to close popovers ─────────────────────────────────────
@@ -1350,7 +1288,7 @@ export default function ApplicantsTable() {
       })()}
 
       {/* Toast */}
-      <Toast visible={toast.visible} message={toast.message} type={toast.type} />
+      {toast && <Toast toast={toast} onDismiss={dismissToast} />}
 
       {/* Bulk Status Confirmation Modal */}
       {isConfirmModalOpen && pendingTargetStatus && (

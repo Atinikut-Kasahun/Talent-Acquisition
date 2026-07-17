@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import PageMeta from "../components/common/PageMeta";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
+import { useToast } from "../components/ui/toast/useToast";
+import Toast from "../components/ui/toast/Toast";
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -140,16 +142,10 @@ export default function Chat() {
     onConfirm: () => void;
   }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
-  const [toastMessage, setToastMessage] = useState<{
-    isVisible: boolean;
-    message: string;
-  }>({ isVisible: false, message: "" });
+  const { toast, showToast: showToastRaw, dismiss: dismissToast } = useToast();
 
   const showToast = (message: string) => {
-    setToastMessage({ isVisible: true, message });
-    setTimeout(() => {
-      setToastMessage({ isVisible: false, message: "" });
-    }, 3000);
+    showToastRaw({ title: "Success", message, variant: "success" });
   };
 
   const requestDeleteSelected = () => {
@@ -768,19 +764,8 @@ export default function Chat() {
         </div>
       )}
 
-      {/* ════ PREMIUM TOAST NOTIFICATION ════ */}
-      <div 
-        className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-4 px-5 py-4 bg-white dark:bg-gray-800 text-gray-800 dark:text-white border border-gray-100 dark:border-gray-700 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] transition-all duration-500 ease-out transform ${
-          toastMessage.isVisible ? "translate-y-0 opacity-100 scale-100" : "translate-y-10 opacity-0 scale-95 pointer-events-none"
-        }`}
-      >
-        <div className="w-9 h-9 rounded-full bg-green-50 dark:bg-green-500/10 flex items-center justify-center flex-shrink-0">
-          <svg className="w-5 h-5 text-green-500 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <p className="text-[15px] font-medium pr-3">{toastMessage.message}</p>
-      </div>
+      {/* ════ ENTERPRISE TOAST NOTIFICATION (shared component) ════ */}
+      {toast && <Toast toast={toast} onDismiss={dismissToast} />}
     </>
   );
 }

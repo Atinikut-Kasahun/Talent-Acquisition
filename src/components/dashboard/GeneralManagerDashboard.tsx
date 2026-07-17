@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Send, BellRing } from "lucide-react";
 import Pagination from "../ui/pagination/Pagination";
 import NewRequisitionWizard from "./NewRequisitionWizard";
+import { useToast } from "../ui/toast/useToast";
+import Toast from "../ui/toast/Toast";
 import {
   HEADCOUNT_BUDGET,
   MOCK_REQUISITIONS,
@@ -27,7 +30,7 @@ function hoursSince(iso: string): number {
 export default function GeneralManagerDashboard() {
   const [requisitions, setRequisitions] = useState<Requisition[]>(MOCK_REQUISITIONS);
   const [timelineTarget, setTimelineTarget] = useState<Requisition | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const { toast, showToast, dismiss } = useToast();
   const [wizardOpen, setWizardOpen] = useState(false);
 
   const storedUser = localStorage.getItem("user");
@@ -45,8 +48,12 @@ export default function GeneralManagerDashboard() {
   function handleWizardSubmit(newReq: Requisition) {
     setRequisitions((prev) => [newReq, ...prev]);
     setWizardOpen(false);
-    setToast(`Requisition ${newReq.id} submitted for MD approval.`);
-    setTimeout(() => setToast(null), 4000);
+    showToast({
+      title: "Requisition submitted",
+      message: `${newReq.title} (${newReq.id}) is now awaiting MD approval.`,
+      variant: "success",
+      icon: Send,
+    });
   }
 
   // ── Derived KPIs ───────────────────────────────────────────────────────
@@ -121,21 +128,18 @@ export default function GeneralManagerDashboard() {
 
   function handleNudge(req: Requisition) {
     const approver = req.status === "Pending MD Approval" ? "Managing Director" : "HR";
-    setToast(`Reminder sent to ${approver} about "${req.title}".`);
-    setTimeout(() => setToast(null), 4000);
+    showToast({
+      title: "Reminder sent",
+      message: `${approver} was notified about "${req.title}".`,
+      variant: "info",
+      icon: BellRing,
+    });
   }
 
   return (
     <div className="space-y-6">
       {/* ── Toast ─────────────────────────────────────────────────────── */}
-      {toast && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium shadow-2xl animate-in fade-in slide-in-from-top-2">
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {toast}
-        </div>
-      )}
+      {toast && <Toast toast={toast} onDismiss={dismiss} />}
 
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

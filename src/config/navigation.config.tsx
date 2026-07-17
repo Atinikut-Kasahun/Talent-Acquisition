@@ -88,7 +88,7 @@ export const SIDEBAR_NAV_CONFIG: NavItem[] = [
     name: "Active Postings",
     icon: <BoxIcon />,
     path: "/jobs",
-    roles: ALL_ROLES,
+    roles: ["superadmin", "admin", "hr", "viewer", "general Manager", "HR manager"],
   },
 
   // ── Applicants ───────────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ export const SIDEBAR_NAV_CONFIG: NavItem[] = [
     name: "Applicants",
     icon: <UserCircleIcon />,
     path: "/candidates",
-    roles: ["superadmin", "admin", "hr", "viewer", "managing director", "HR manager"],
+    roles: ["superadmin", "admin", "hr", "viewer", "HR manager"],
   },
 
   // ── Chat ─────────────────────────────────────────────────────────────────

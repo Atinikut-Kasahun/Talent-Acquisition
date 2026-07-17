@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react";
+import { Landmark, FileSignature, Gauge, CheckCircle2, Undo2, Award, type LucideIcon } from "lucide-react";
+import { useToast } from "../ui/toast/useToast";
+import Toast from "../ui/toast/Toast";
 import {
   ActivityEntry,
   MOCK_REQUISITIONS,
@@ -37,7 +40,7 @@ export default function ManagingDirectorDashboard() {
   const [amendOpen, setAmendOpen] = useState(false);
   const [amendMessage, setAmendMessage] = useState("");
   const [directiveMessage, setDirectiveMessage] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
+  const { toast, showToast, dismiss } = useToast();
   const [activeFinalist, setActiveFinalist] = useState<Finalist | null>(null);
   const [signedOff, setSignedOff] = useState<Record<string, boolean>>({});
 
@@ -87,11 +90,6 @@ export default function ManagingDirectorDashboard() {
     return totalDays / resolved.length;
   }, [requisitions]);
 
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 4000);
-  }
-
   function handleApprove(req: Requisition) {
     setRequisitions((prev) =>
       prev.map((r) =>
@@ -105,7 +103,12 @@ export default function ManagingDirectorDashboard() {
           : r
       )
     );
-    showToast(`Requisition ${req.id} approved.`);
+    showToast({
+      title: "Requisition approved",
+      message: `${req.title} (${req.id}) has cleared MD approval and moves to HR.`,
+      variant: "success",
+      icon: CheckCircle2,
+    });
     setSelectedId(null);
   }
 
@@ -128,7 +131,12 @@ export default function ManagingDirectorDashboard() {
           : r
       )
     );
-    showToast(`Requisition ${selectedReq.id} returned to ${selectedReq.requestedBy ?? "the requestor"} (GM) for revision.`);
+    showToast({
+      title: "Returned for revision",
+      message: `${selectedReq.title} sent back to ${selectedReq.requestedBy ?? "the requestor"} (GM) with your note.`,
+      variant: "info",
+      icon: Undo2,
+    });
     setAmendOpen(false);
     setAmendMessage("");
     setSelectedId(null);
@@ -151,7 +159,12 @@ export default function ManagingDirectorDashboard() {
 
   function handleSignOff(finalist: Finalist) {
     setSignedOff((prev) => ({ ...prev, [finalist.id]: true }));
-    showToast(`Sign-off recorded for ${finalist.name}.`);
+    showToast({
+      title: "Sign-off recorded",
+      message: `${finalist.name}'s hire for ${finalist.roleAppliedFor} has been finalized.`,
+      variant: "success",
+      icon: Award,
+    });
   }
 
   const budgetPct = Math.min(100, Math.round((budgetLiability / TOTAL_BUDGET_CAP) * 100));
@@ -164,14 +177,7 @@ export default function ManagingDirectorDashboard() {
   return (
     <div className="space-y-6">
       {/* ── Toast ─────────────────────────────────────────────────────── */}
-      {toast && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-950 text-white text-sm font-medium shadow-2xl">
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {toast}
-        </div>
-      )}
+      {toast && <Toast toast={toast} onDismiss={dismiss} />}
 
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div>
@@ -185,6 +191,7 @@ export default function ManagingDirectorDashboard() {
           label="Total Headcount Budget Liability"
           value={`${formatETB(budgetLiability)} / ${formatETB(TOTAL_BUDGET_CAP)}`}
           trend={{ direction: "up", value: "2%", label: "vs last quarter" }}
+          icon={Landmark}
         >
           <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden mt-3 flex">
             {/* Segment A: committed/spent — solid gradient with a soft glow */}
@@ -238,6 +245,7 @@ export default function ManagingDirectorDashboard() {
           value={formatETB(pendingApprovalValue)}
           sublabel={`${pendingQueue.length} requisition${pendingQueue.length === 1 ? "" : "s"} awaiting sign-off`}
           trend={pendingQueue.length > 0 ? { direction: "up", value: `${pendingQueue.length}`, label: "in queue" } : undefined}
+          icon={FileSignature}
         />
 
         <ExecutiveKpiCard
@@ -245,6 +253,7 @@ export default function ManagingDirectorDashboard() {
           value={keyHireVelocity !== null ? `${keyHireVelocity.toFixed(1)}d` : "—"}
           sublabel="Time to close critical roles"
           trend={{ direction: "down", value: "1d", label: "vs last quarter" }}
+          icon={Gauge}
         />
       </div>
 
@@ -565,46 +574,58 @@ export default function ManagingDirectorDashboard() {
   );
 }
 
-// ── Executive KPI card — larger type, sharper border, trend indicator ──────
+// ── Executive KPI card — icon + trend pill on top, muted title, bold value ──
 function ExecutiveKpiCard({
   label,
   value,
   sublabel,
   trend,
+  icon: Icon,
   children,
 }: {
   label: string;
   value: string;
   sublabel?: string;
   trend?: { direction: "up" | "down"; value: string; label: string };
+  icon: LucideIcon;
   children?: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</span>
-      <div className="text-3xl font-bold text-gray-950 dark:text-white mt-2 tracking-tight">{value}</div>
-      {sublabel && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">{sublabel}</p>}
-      {trend && (
-        <div className="flex items-center gap-1 mt-2">
-          <svg
-            className={`w-3 h-3 ${trend.direction === "up" ? "text-green-500" : "text-red-500"}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            strokeWidth={2.5}
+      {/* Top row: icon + trend pill */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-white/[0.05] flex items-center justify-center">
+          <Icon className="w-5 h-5 text-gray-700 dark:text-gray-300" strokeWidth={1.75} />
+        </span>
+
+        {trend && (
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+              trend.direction === "up"
+                ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
+                : "bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400"
+            }`}
           >
-            {trend.direction === "up" ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            )}
-          </svg>
-          <span className={`text-xs font-semibold ${trend.direction === "up" ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              {trend.direction === "up" ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              )}
+            </svg>
             {trend.value}
           </span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">{trend.label}</span>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* Middle row: muted title */}
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</span>
+
+      {/* Bottom row: bold value */}
+      <div className="text-3xl font-bold text-gray-950 dark:text-white mt-1.5 tracking-tight">{value}</div>
+
+      {sublabel && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">{sublabel}</p>}
+      {trend?.label && <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{trend.label}</p>}
       {children}
     </div>
   );

@@ -35,6 +35,69 @@ class JobController extends Controller
         return response()->json($query->get());
     }
 
+    /**
+     * Admin/TA listing — returns jobs in every status (draft, published,
+     * closed) with real applicant funnel counts and the hiring manager
+     * ("hiring team") who requested the role, for the internal Active
+     * Postings workspace. Unlike index(), this is not filtered to published
+     * jobs only, since the TA team needs to see everything in the pipeline.
+     */
+    public function adminIndex(Request $request)
+    {
+        $query = JobPosting::with(['branches', 'creator'])
+            ->withCount([
+                'applications as new_count' => fn ($q) => $q->where('status', 'new'),
+                'applications as interviewing_count' => fn ($q) => $q->whereIn('status', ['reviewing', 'shortlisted', 'interviewed']),
+                'applications as offer_count' => fn ($q) => $q->where('status', 'offered'),
+                'applications as total_applicants' => fn ($q) => $q->whereNotIn('status', ['withdrawn']),
+            ])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->has('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('department') && $request->department !== 'all') {
+            $query->where('department', $request->department);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('department', 'like', "%{$search}%");
+            });
+        }
+
+        return response()->json($query->get()->map(function ($job) {
+            return [
+                'id' => $job->id,
+                'title' => $job->title,
+                'slug' => $job->slug,
+                'department' => $job->department,
+                'employment_type' => $job->employment_type,
+                'salary_range' => $job->salary_range,
+                'about' => $job->about,
+                'status' => $job->status,
+                'views' => $job->views,
+                'branches' => $job->branches->map(fn ($b) => ['id' => $b->id, 'name' => $b->name])->values(),
+                'hiring_manager' => $job->creator ? [
+                    'id' => $job->creator->id,
+                    'name' => $job->creator->name,
+                    'avatar' => $job->creator->avatar,
+                ] : null,
+                'funnel' => [
+                    'new' => $job->new_count,
+                    'interviewing' => $job->interviewing_count,
+                    'offer' => $job->offer_count,
+                    'total' => $job->total_applicants,
+                ],
+                'days_on_market' => (int) now()->diffInDays($job->created_at),
+                'created_at' => $job->created_at,
+            ];
+        }));
+    }
+
     
     public function show($slug)
     {

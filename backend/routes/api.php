@@ -50,16 +50,18 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::delete('admin/applications/{id}', [ApplicationController::class, 'destroy']);
         Route::post('admin/applications/{id}/notes', [ApplicationController::class, 'updateNotes']);
         Route::patch('admin/applications/{id}/star', [ApplicationController::class, 'toggleStar']);
+
+        // Jobs — TA team (hr) needs full read/write access to run the Active
+        // Postings workspace, not just superadmin/admin.
+        Route::get('admin/jobs', [JobController::class, 'adminIndex']);
+        Route::post('admin/jobs', [JobController::class, 'store']);
+        Route::put('admin/jobs/{id}', [JobController::class, 'update']);
+        Route::delete('admin/jobs/{id}', [JobController::class, 'destroy']);
     });
 
     // Admin-only routes
     Route::group(['middleware' => 'role:superadmin,admin'], function () {
-        
-        Route::post('admin/jobs', [JobController::class, 'store']);
-        Route::put('admin/jobs/{id}', [JobController::class, 'update']);
-        Route::delete('admin/jobs/{id}', [JobController::class, 'destroy']);
 
-        
         Route::post('admin/branches', [BranchController::class, 'store']);
         Route::delete('admin/branches/{id}', [BranchController::class, 'destroy']);
 

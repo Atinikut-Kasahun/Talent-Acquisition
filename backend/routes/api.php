@@ -41,6 +41,7 @@ Route::group(['middleware' => 'auth:api'], function () {
     // Applications routes (broader access based on frontend navigation config)
     Route::group(['middleware' => 'role:superadmin,admin,hr,viewer,managing director,HR manager'], function () {
         Route::get('admin/applications', [ApplicationController::class, 'index']);
+        Route::get('admin/applications/pipeline-stats', [ApplicationController::class, 'pipelineStats']);
         Route::get('admin/applications/{id}', [ApplicationController::class, 'show']);
         Route::put('admin/applications/bulk-status', [ApplicationController::class, 'bulkUpdateStatus']);
         Route::put('admin/applications/bulk-archive', [ApplicationController::class, 'bulkArchive']);

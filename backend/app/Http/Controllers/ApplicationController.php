@@ -11,6 +11,49 @@ use Spatie\Activitylog\Models\Activity;
 
 class ApplicationController extends Controller
 {
+    /**
+     * Pipeline analytics for the HR Manager dashboard.
+     *
+     * "Stage friction" is an average of (now - updated_at) in days for
+     * applications currently sitting in each active status — i.e. how long
+     * the current cohort has been stuck there. This is a real, honest proxy
+     * computed from actual timestamps; it isn't a true historical
+     * stage-duration audit (that would need a status-change log table this
+     * schema doesn't have yet).
+     *
+     * "Offer acceptance rate" is likewise a proxy: offered / (offered +
+     * rejected) across all applications that ever reached those two
+     * terminal-ish statuses, since there's no distinct accepted/declined
+     * field. Flagged as an approximation in the response.
+     */
+    public function pipelineStats()
+    {
+        $statusCounts = JobApplication::selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $avgAgeByStatus = JobApplication::selectRaw(
+            "status, AVG(EXTRACT(EPOCH FROM (NOW() - updated_at)) / 86400) as avg_days"
+        )
+            ->whereIn('status', ['new', 'reviewing', 'shortlisted', 'interviewed', 'offered'])
+            ->groupBy('status')
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->status => round((float) $row->avg_days, 1)]);
+
+        $offeredCount = (int) ($statusCounts['offered'] ?? 0);
+        $rejectedCount = (int) ($statusCounts['rejected'] ?? 0);
+        $offerAcceptanceRate = ($offeredCount + $rejectedCount) > 0
+            ? round(($offeredCount / ($offeredCount + $rejectedCount)) * 100, 1)
+            : null;
+
+        return response()->json([
+            'status_counts' => $statusCounts,
+            'avg_days_in_status' => $avgAgeByStatus,
+            'offer_acceptance_rate' => $offerAcceptanceRate,
+            'offer_acceptance_rate_note' => 'Approximation: offered / (offered + rejected) across all applications. No dedicated accepted/declined field exists yet.',
+        ]);
+    }
+
     
     public function index(Request $request)
     {
@@ -44,7 +87,7 @@ class ApplicationController extends Controller
             $query->where('is_archived', false);
         }
 
-        return response()->json($query->paginate(20));
+        return response()->json($query->paginate($request->get('per_page', 20)));
     }
 
     

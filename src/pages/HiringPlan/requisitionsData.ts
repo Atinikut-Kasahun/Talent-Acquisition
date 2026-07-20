@@ -114,6 +114,14 @@ export const HEADCOUNT_BUDGET = {
 // finance/budget endpoint once one exists.
 export const TOTAL_BUDGET_CAP = 1_500_000;
 
+// Illustrative authorized headcount ceiling for the HR Manager dashboard's
+// "Headcount vs Capacity" KPI. There is no Employee/headcount model in the
+// schema yet (the `users` table holds system accounts, not company staff),
+// so this — and the "current" figure alongside it — is a placeholder until
+// a real HR/payroll data source exists.
+export const AUTHORIZED_HEADCOUNT_CAP = 260;
+export const ILLUSTRATIVE_CURRENT_HEADCOUNT = 245;
+
 export const MOCK_REQUISITIONS: Requisition[] = [
   {
     id: "REQ-001",

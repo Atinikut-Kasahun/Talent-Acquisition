@@ -35,7 +35,7 @@ class ApplicationController extends Controller
         $avgAgeByStatus = JobApplication::selectRaw(
             "status, AVG(EXTRACT(EPOCH FROM (NOW() - updated_at)) / 86400) as avg_days"
         )
-            ->whereIn('status', ['new', 'reviewing', 'shortlisted', 'interviewed', 'offered'])
+            ->whereIn('status', ['reviewing', 'shortlisted', 'written_exam', 'technical_exam', 'interviewed'])
             ->groupBy('status')
             ->get()
             ->mapWithKeys(fn ($row) => [$row->status => round((float) $row->avg_days, 1)]);

@@ -35,7 +35,15 @@ export interface Requisition {
   jobDescription?: string;
   annualSalary?: number; // per-headcount estimated annual salary (ETB) — drives MD budget KPIs
   activity?: ActivityEntry[]; // contextual directives / audit trail, newest last
+  // Sister company / business unit this requisition belongs to. Illustrative
+  // until GM requisitions capture a real company_id — there's no live link
+  // between this mock governance layer and the real `companies` table yet.
+  company?: string;
 }
+
+// Sister companies referenced by MOCK_REQUISITIONS' `company` field, for the
+// HR Manager dashboard's "Active Requisitions by Business Unit" chart.
+export const BUSINESS_UNITS = ["Droga Group (HQ)", "Droga Trading", "Droga Logistics", "Droga Tech"];
 
 // Canonical department list for the New Requisition wizard — a superset of
 // whatever departments already exist in mock data, so new requisitions aren't
@@ -127,6 +135,7 @@ export const MOCK_REQUISITIONS: Requisition[] = [
     id: "REQ-001",
     title: "Senior Sales Representative",
     department: "Sales",
+    company: "Droga Trading",
     headcount: 3,
     submittedAt: "2026-05-10",
     approvedAt: "2026-05-14",
@@ -140,6 +149,7 @@ export const MOCK_REQUISITIONS: Requisition[] = [
     id: "REQ-002",
     title: "Warehouse Supervisor",
     department: "Operations",
+    company: "Droga Logistics",
     headcount: 2,
     submittedAt: "2026-05-28",
     lastUpdatedAt: "2026-07-12T06:00:00",
@@ -160,6 +170,7 @@ export const MOCK_REQUISITIONS: Requisition[] = [
     id: "REQ-003",
     title: "Finance Officer",
     department: "Finance",
+    company: "Droga Group (HQ)",
     headcount: 1,
     submittedAt: "2026-06-01",
     approvedAt: "2026-06-05",
@@ -173,6 +184,7 @@ export const MOCK_REQUISITIONS: Requisition[] = [
     id: "REQ-004",
     title: "Marketing Coordinator",
     department: "Marketing",
+    company: "Droga Trading",
     headcount: 2,
     submittedAt: "2026-04-15",
     lastUpdatedAt: "2026-04-19T10:00:00",
@@ -185,6 +197,7 @@ export const MOCK_REQUISITIONS: Requisition[] = [
     id: "REQ-005",
     title: "IT Support Specialist",
     department: "IT",
+    company: "Droga Group (HQ)",
     headcount: 1,
     submittedAt: "2026-06-02",
     lastUpdatedAt: "2026-06-02T15:00:00",
@@ -197,6 +210,7 @@ export const MOCK_REQUISITIONS: Requisition[] = [
     id: "REQ-006",
     title: "Senior React Developer",
     department: "Engineering",
+    company: "Droga Tech",
     headcount: 1,
     submittedAt: "2026-07-10",
     lastUpdatedAt: "2026-07-13T04:00:00",
@@ -209,6 +223,7 @@ export const MOCK_REQUISITIONS: Requisition[] = [
     id: "REQ-007",
     title: "Office Assistant",
     department: "Admin",
+    company: "Droga Group (HQ)",
     headcount: 1,
     submittedAt: "2026-07-07",
     approvedAt: "2026-07-08",
@@ -222,6 +237,7 @@ export const MOCK_REQUISITIONS: Requisition[] = [
     id: "REQ-008",
     title: "Enterprise Account Executive",
     department: "Sales",
+    company: "Droga Trading",
     headcount: 1,
     submittedAt: "2026-07-13",
     lastUpdatedAt: "2026-07-14T08:30:00",
@@ -235,6 +251,7 @@ export const MOCK_REQUISITIONS: Requisition[] = [
     id: "REQ-009",
     title: "DevOps Engineer",
     department: "Engineering",
+    company: "Droga Tech",
     headcount: 1,
     submittedAt: "2026-07-14",
     lastUpdatedAt: "2026-07-15T10:00:00",

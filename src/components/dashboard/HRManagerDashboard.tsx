@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import {
@@ -11,6 +11,8 @@ import {
   X,
   Info,
   Building2,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { authFetch } from "../../utils/authFetch";
 import { useToast } from "../ui/toast/useToast";
@@ -28,10 +30,6 @@ const API_URL = import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API
 
 function initials(name: string) {
   return name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
-}
-
-function hoursSince(iso: string): number {
-  return (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60);
 }
 
 // Lighten a hex color toward white by `amt` (0-1) — used to fade
@@ -55,6 +53,76 @@ interface Branch {
   name: string;
 }
 
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+/** Custom dropdown — replaces the native <select> so OS chrome (native blue
+ * highlight, hard-edged box, system scrollbars) never leaks into the design. */
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: SelectOption[];
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  const selected = options.find((o) => o.value === value);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-left focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-colors"
+      >
+        <span className={selected ? "text-gray-900 dark:text-white" : "text-gray-400"}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1.5 w-full max-h-56 overflow-y-auto rounded-xl border border-gray-100 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 py-1">
+          {options.length === 0 ? (
+            <p className="px-3.5 py-2.5 text-sm text-gray-400">No options available.</p>
+          ) : (
+            options.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+                className="flex w-full items-center justify-between px-3.5 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+              >
+                {o.label}
+                {o.value === value && <Check className="w-3.5 h-3.5 text-brand-500" />}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const STAGE_LABELS: [string, string][] = [
   ["reviewing", "Reviewing"],
   ["shortlisted", "Shortlisted"],
@@ -63,7 +131,7 @@ const STAGE_LABELS: [string, string][] = [
   ["interviewed", "Interviewed"],
 ];
 
-const BUSINESS_UNIT_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#EC4899"];
+const BUSINESS_UNIT_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#EC4899", "#0EA5E9"];
 
 export default function HRManagerDashboard() {
   const [requisitions, setRequisitions] = useState<Requisition[]>(MOCK_REQUISITIONS);
@@ -171,8 +239,12 @@ export default function HRManagerDashboard() {
   };
 
   // ── Business unit donut ──────────────────────────────────────────────────
+  // Broader than the "committed" filter used for the budget/recruiting KPIs
+  // above — this chart is about total recruitment bandwidth consumed, so it
+  // includes everything still alive in the pipeline (only Rejected/Closed
+  // are excluded as terminal/dead states).
   const businessUnitData = useMemo(() => {
-    const active = requisitions.filter((r) => ["Approved", "Posted", "In Progress"].includes(r.status));
+    const active = requisitions.filter((r) => !["Rejected", "Closed"].includes(r.status));
     const map = new Map<string, { count: number; budget: number }>();
     active.forEach((r) => {
       const bu = r.company ?? "Unassigned";
@@ -320,53 +392,49 @@ export default function HRManagerDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* ── Row 1: Strategic Health ─────────────────────────────────────── */}
+      {/* ── Row 1: Strategic Health — strict 4-equal-card grid ───────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        {/* Headcount vs Capacity — segmented */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03] sm:col-span-2">
+        {/* Headcount vs Capacity — compact, fits standard card width */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-500/10">
-                <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              </span>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Headcount vs. Capacity</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {ILLUSTRATIVE_CURRENT_HEADCOUNT + recruitingHeadcount} <span className="text-sm text-gray-400 font-normal">/ {AUTHORIZED_HEADCOUNT_CAP}</span>
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span title="Illustrative — no employee headcount data source exists yet" className="text-gray-300 dark:text-gray-600">
-                <Info className="w-3.5 h-3.5" />
-              </span>
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${capBadge.bg} ${capBadge.text}`}>
-                {committedPct}% Cap · {capBadge.label}
-              </span>
-            </div>
+            <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-500/10">
+              <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </span>
+            <span title="Illustrative — no employee headcount data source exists yet" className="text-gray-300 dark:text-gray-600">
+              <Info className="w-3.5 h-3.5" />
+            </span>
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Headcount vs. Capacity</p>
+          <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-1">
+            {ILLUSTRATIVE_CURRENT_HEADCOUNT + recruitingHeadcount} <span className="text-sm text-gray-400 font-normal">/ {AUTHORIZED_HEADCOUNT_CAP}</span>
+          </p>
 
-          <div className="h-3 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden flex">
+          <div className="h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden flex mt-3">
             <div className="h-full bg-blue-600" style={{ width: `${activePct}%` }} />
             <div
               className="h-full bg-amber-400"
               style={{
                 width: `${recruitingPct}%`,
-                backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.5) 0, rgba(255,255,255,0.5) 4px, transparent 4px, transparent 8px)",
+                backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.5) 0, rgba(255,255,255,0.5) 3px, transparent 3px, transparent 6px)",
               }}
             />
             <div className="h-full bg-gray-200 dark:bg-white/10" style={{ width: `${Math.max(0, 100 - activePct - recruitingPct)}%` }} />
           </div>
 
-          <div className="flex items-center gap-5 mt-3">
-            <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <span className="w-2 h-2 rounded-full bg-blue-600" /> {ILLUSTRATIVE_CURRENT_HEADCOUNT} Active
-            </span>
-            <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <span className="w-2 h-2 rounded-full bg-amber-400" /> {recruitingHeadcount} Recruiting
-            </span>
-            <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-white/20" /> {openSlots} Open Slots
+          <div className="flex items-center justify-between mt-2.5">
+            <div className="flex items-center gap-2.5">
+              <span title={`${ILLUSTRATIVE_CURRENT_HEADCOUNT} Active`} className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" /> {ILLUSTRATIVE_CURRENT_HEADCOUNT}
+              </span>
+              <span title={`${recruitingHeadcount} Recruiting`} className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" /> {recruitingHeadcount}
+              </span>
+              <span title={`${openSlots} Open Slots`} className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-white/20 shrink-0" /> {openSlots}
+              </span>
+            </div>
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${capBadge.bg} ${capBadge.text}`}>
+              {committedPct}%
             </span>
           </div>
         </div>
@@ -398,10 +466,8 @@ export default function HRManagerDashboard() {
           </p>
           <p className="text-xs text-gray-400 mt-1">Industry benchmark: ~40 days</p>
         </div>
-      </div>
 
-      {/* Active Requisition Budget */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        {/* Active Requisition Budget */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="flex items-center justify-between mb-3">
             <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-purple-50 dark:bg-purple-500/10">
@@ -433,14 +499,11 @@ export default function HRManagerDashboard() {
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Role & Department</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Requested By</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Salary Band</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">SLA</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                 {pendingQueue.map((req) => {
-                  const hoursLeft = Math.max(0, Math.round(48 - hoursSince(req.lastUpdatedAt)));
-                  const overdue = hoursLeft === 0;
                   return (
                     <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
                       <td className="px-5 py-4">
@@ -457,11 +520,6 @@ export default function HRManagerDashboard() {
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
                         {req.annualSalary ? `ETB ${Math.round(req.annualSalary / 1000)}K/yr` : "—"}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${overdue ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400" : "bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-gray-400"}`}>
-                          {overdue ? "Overdue" : `${hoursLeft} hrs remaining`}
-                        </span>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <button
@@ -517,7 +575,7 @@ export default function HRManagerDashboard() {
           ) : (
             <>
               <Chart options={buOptions} series={buSeries} type="donut" height={220} />
-              <div className="mt-3 space-y-1 border-t border-gray-100 dark:border-white/[0.06] pt-3">
+              <div className="mt-3 space-y-0.5 border-t border-gray-100 dark:border-white/[0.06] pt-2 max-h-[168px] overflow-y-auto">
                 {businessUnitData.map((d, i) => {
                   const pct = buMetric === "count" ? (d.count / buTotalCount) * 100 : (d.budget / buTotalBudget) * 100;
                   return (
@@ -525,7 +583,7 @@ export default function HRManagerDashboard() {
                       key={d.name}
                       onMouseEnter={() => setHoveredBU(d.name)}
                       onMouseLeave={() => setHoveredBU(null)}
-                      className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-default"
+                      className="flex items-center justify-between px-2 py-1 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-default"
                     >
                       <span className="flex items-center gap-2 min-w-0">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: BUSINESS_UNIT_COLORS[i % BUSINESS_UNIT_COLORS.length] }} />
@@ -598,16 +656,12 @@ export default function HRManagerDashboard() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Location</label>
-                <select
+                <CustomSelect
                   value={drawerBranchId}
-                  onChange={(e) => setDrawerBranchId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
-                >
-                  <option value="">Select a location</option>
-                  {branches.map((b) => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
+                  onChange={setDrawerBranchId}
+                  options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                  placeholder="Select a location"
+                />
                 {branches.length === 0 && <p className="text-xs text-gray-400 mt-1">No branches configured yet.</p>}
               </div>
 
